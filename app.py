@@ -4,7 +4,8 @@ import pickle
 
 STATE_FILE = "task_manager_backup.pkl"
 
-st.title("Task Manager (Allons-y!)")
+st.title("Executive Function Assistant\n"
+"Feel free to brain dump up to 50 tasks. Select 'Yes' from the drop-down menu to specify a prerequisite.")
 
 # --- 1. MEMORY SETUP ---
 # Auto-loads local file backup if it exists on disk
@@ -95,14 +96,15 @@ if st.session_state.mode == "adding":
         st.markdown("---")
         
         if len(st.session_state.tasks) > 0:
-            if st.button("Finish Adding & Start Working 🚀"):
+            if st.button("Finish Adding & Start Working"):
                 st.session_state.mode = "working"
                 st.session_state.current_index = 0
                 st.rerun() 
 
 # --- 3. MODE: WORKING ON TASKS ---
 elif st.session_state.mode == "working":
-    st.header("Step 2: Get to Work!")
+    st.header("Step 2: Time to start working on tasks--Allons-y!\n\n I have not yet configured an update to delete unwanted tasks,"
+    "so for now, please just mark them as completed if you realize you don't need them.")
 
     if len(st.session_state.tasks) > 0:
         if st.session_state.current_index >= len(st.session_state.tasks):
@@ -112,7 +114,7 @@ elif st.session_state.mode == "working":
         
         st.subheader(f"Current Task: **{current_task['name']}**")
         if current_task['prereq']:
-            st.info(f"⚠️ **Prerequisite reminder:** You need to finish **{current_task['prereq']}** first!")
+            st.info(f"⚠️ **Prerequisite reminder:** You need to finish this task first!: \n\n **{current_task['prereq']}**")
 
         col1, col2 = st.columns(2)
         
@@ -146,4 +148,3 @@ elif st.session_state.mode == "working":
             # Wipe file local storage clean for a fresh restart
             save_tasks_locally()
             st.rerun()
-            
