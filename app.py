@@ -13,7 +13,7 @@ if not cookies.ready():
     # Wait for the browser components to fully load before rendering the app
     st.stop()
 
-st.title("Task Manager (Allons-y!)")
+st.title("Executive Function Assistant")
 
 # Auto-loads tasks from the visitor's private browser cookies
 if "tasks" not in st.session_state:
@@ -104,14 +104,14 @@ if st.session_state.mode == "adding":
         st.markdown("---")
         
         if len(st.session_state.tasks) > 0:
-            if st.button("Finish Adding & Start Working 🚀"):
+            if st.button("Finish Adding & Start Working"):
                 st.session_state.mode = "working"
                 st.session_state.current_index = 0
                 st.rerun() 
 
 # --- 3. MODE: WORKING ON TASKS ---
 elif st.session_state.mode == "working":
-    st.header("Step 2: Get to Work!")
+    st.header("Step 2: Let's get to working on those tasks. Allons-y!")
 
     if len(st.session_state.tasks) > 0:
         if st.session_state.current_index >= len(st.session_state.tasks):
@@ -121,7 +121,7 @@ elif st.session_state.mode == "working":
         
         st.subheader(f"Current Task: **{current_task['name']}**")
         if current_task['prereq']:
-            st.info(f"⚠️ **Prerequisite reminder:** You need to finish **{current_task['prereq']}** first!")
+            st.info(f"⚠️ **Prerequisite reminder:** You need to finish this task first:\n **{current_task['prereq']}**")
 
         col1, col2 = st.columns(2)
         
