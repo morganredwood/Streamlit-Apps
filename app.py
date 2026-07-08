@@ -91,7 +91,9 @@ if st.session_state.mode == "adding":
                         st.sidebar.error("You have reached the task limit of 50!")
                 else:
                     st.sidebar.warning("Please type a task name first!")
-                    st.markdown("---")
+
+        st.markdown("---")
+        
         if len(st.session_state.tasks) > 0:
             if st.button("Finish Adding & Start Working 🚀"):
                 st.session_state.mode = "working"
@@ -144,4 +146,4 @@ elif st.session_state.mode == "working":
             # Wipe file local storage clean for a fresh restart
             save_tasks_locally()
             st.rerun()
-     
+            
