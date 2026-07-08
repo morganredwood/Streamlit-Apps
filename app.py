@@ -4,8 +4,7 @@ import pickle
 
 STATE_FILE = "task_manager_backup.pkl"
 
-st.title("Executive Function Assistant\n"
-"Feel free to brain dump up to 50 tasks. Select 'Yes' from the drop-down menu to specify a prerequisite.")
+st.title("Executive Function Assistant")
 
 # --- 1. MEMORY SETUP ---
 # Auto-loads local file backup if it exists on disk
