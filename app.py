@@ -1,10 +1,10 @@
 import streamlit as st
 import json
-from streamlit_cookies_manager import EncryptedCookiesManager
+from streamlit_cookies_manager import EncryptedCookieManager
 
 # --- 1. SECURE BROWSER STORAGE SETUP ---
 # This initializes an encrypted cookie manager so data is private to each user's browser
-cookies = EncryptedCookiesManager(
+cookies = EncryptedCookieManager(
     prefix="allons_y_tasks/",
     password=st.secrets.get("cookie_password", "KeepItSecretKeepItSafe123!")
 )
@@ -155,4 +155,3 @@ elif st.session_state.mode == "working":
             # Wipe browser cookie storage clean for a fresh restart
             save_tasks_locally()
             st.rerun()
-            
