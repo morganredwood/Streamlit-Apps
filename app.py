@@ -138,4 +138,9 @@ elif st.session_state.mode == "working":
             # Wipe file local storage clean for a fresh restart
             save_tasks_locally()
             st.rerun()
-            
+    st.markdown("---")
+    if len(st.session_state.tasks) > 0:
+        if st.button("Finish Adding & Start Working 🚀"):
+            st.session_state.mode = "working"
+            st.session_state.current_index = 0
+            st.rerun()  
