@@ -1,36 +1,45 @@
 import streamlit as st
-import os
-import pickle
+import json
+from streamlit_cookies_manager import EncryptedCookiesManager
 
-STATE_FILE = "task_manager_backup.pkl"
+# --- 1. SECURE BROWSER STORAGE SETUP ---
+# This initializes an encrypted cookie manager so data is private to each user's browser
+cookies = EncryptedCookiesManager(
+    prefix="allons_y_tasks/",
+    password=st.secrets.get("cookie_password", "KeepItSecretKeepItSafe123!")
+)
 
-st.title("Executive Function Assistant")
+if not cookies.ready():
+    # Wait for the browser components to fully load before rendering the app
+    st.stop()
 
-# --- 1. MEMORY SETUP ---
-# Auto-loads local file backup if it exists on disk
+st.title("Task Manager (Allons-y!)")
+
+# Auto-loads tasks from the visitor's private browser cookies
 if "tasks" not in st.session_state:
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "rb") as f:
-            st.session_state.tasks = pickle.load(f)
+    saved_tasks_raw = cookies.get("tasks_data")
+    if saved_tasks_raw:
+        try:
+            st.session_state.tasks = json.loads(saved_tasks_raw)
+        except Exception:
+            st.session_state.tasks = []
     else:
         st.session_state.tasks = []  
 
 if "current_index" not in st.session_state:
-    if os.path.exists(STATE_FILE):
-        # Keeps your position if the app reloads mid-work
-        st.session_state.current_index = 0
-    else:
-        st.session_state.current_index = 0  
+    st.session_state.current_index = 0  
 
 if "mode" not in st.session_state:
     st.session_state.mode = "adding"  
 
 LIMIT = 50
 
-# Helper function to auto-save to disk instantly
+# Helper function to save tasks directly into the visitor's private browser cache
 def save_tasks_locally():
-    with open(STATE_FILE, "wb") as f:
-        pickle.dump(st.session_state.tasks, f)
+    # Convert our list of dictionaries to a plain text string so a browser can hold it
+    tasks_string = json.dumps(st.session_state.tasks)
+    cookies["tasks_data"] = tasks_string
+    cookies.save()
 
 # --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
@@ -84,7 +93,7 @@ if st.session_state.mode == "adding":
                         }
                         st.session_state.tasks.append(task_data)
                         
-                        # Save backup immediately to your hard drive
+                        # Save backup immediately to the user's browser
                         save_tasks_locally()
                         st.rerun()
                     else:
@@ -95,15 +104,14 @@ if st.session_state.mode == "adding":
         st.markdown("---")
         
         if len(st.session_state.tasks) > 0:
-            if st.button("Finish Adding & Start Working"):
+            if st.button("Finish Adding & Start Working 🚀"):
                 st.session_state.mode = "working"
                 st.session_state.current_index = 0
                 st.rerun() 
 
 # --- 3. MODE: WORKING ON TASKS ---
 elif st.session_state.mode == "working":
-    st.header("Step 2: Time to start working on tasks--Allons-y!\n\n I have not yet configured an update to delete unwanted tasks,"
-    "so for now, please just mark them as completed if you realize you don't need them.")
+    st.header("Step 2: Get to Work!")
 
     if len(st.session_state.tasks) > 0:
         if st.session_state.current_index >= len(st.session_state.tasks):
@@ -113,7 +121,7 @@ elif st.session_state.mode == "working":
         
         st.subheader(f"Current Task: **{current_task['name']}**")
         if current_task['prereq']:
-            st.info(f"⚠️ **Prerequisite reminder:** You need to finish this task first!: \n\n **{current_task['prereq']}**")
+            st.info(f"⚠️ **Prerequisite reminder:** You need to finish **{current_task['prereq']}** first!")
 
         col1, col2 = st.columns(2)
         
@@ -121,7 +129,7 @@ elif st.session_state.mode == "working":
             if st.button("👍 Yes, I completed it!"):
                 del st.session_state.tasks[st.session_state.current_index]
                 
-                # Auto-save changes locally after removing the completed item
+                # Auto-save changes to browser after removing the completed item
                 save_tasks_locally()
                 
                 if st.session_state.current_index >= len(st.session_state.tasks):
@@ -144,6 +152,7 @@ elif st.session_state.mode == "working":
             st.session_state.current_index = 0
             st.session_state.mode = "adding"
             
-            # Wipe file local storage clean for a fresh restart
+            # Wipe browser cookie storage clean for a fresh restart
             save_tasks_locally()
             st.rerun()
+            
