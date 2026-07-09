@@ -11,7 +11,7 @@ cookies = EncryptedCookieManager(
 if not cookies.ready():
     st.stop()
 
-# Title is only shown when building the list now to accommodate the working mode changes
+# Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
     st.title("Executive Function Assistant")
 
@@ -67,15 +67,7 @@ if st.session_state.mode == "adding":
         if st.session_state.confirm_delete_list:
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
             
-            st.html("""
-                <style>
-                div[data-testid="stVerticalBlock"] div:has(> button.purple-btn) { text-align: left; }
-                button.purple-btn {
-                    border: 3px solid #800080 !important;
-                    background-color: transparent !important;
-                }
-                </style>
-            """)
+            # Standard button retained in its position
             if st.button("Go Back", key="go_back_btn", help="Cancel list clearing", type="secondary"):
                 st.session_state.confirm_delete_list = False
                 st.session_state.show_delete_dropdown = False
@@ -98,23 +90,13 @@ if st.session_state.mode == "adding":
             if has_prereq == "Yes":
                 prereq_text = st.text_input("What must be completed first?")
 
-            st.html("""
-                <style>
-                button.green-btn { border: 3px solid #28a745 !important; background-color: transparent !important; }
-                button.red-btn { border: 3px solid #dc3545 !important; background-color: transparent !important; }
-                button.black-btn { border: 3px solid #000000 !important; background-color: transparent !important; }
-                </style>
-            """)
-
             btn_col1, btn_col2, btn_col3 = st.columns(3)
             
             with btn_col1:
                 submit_task = st.form_submit_button("Add Task")
-                st.html("<script>document.querySelectorAll('button[form=\"input_form\"]')[0].classList.add('green-btn');</script>")
 
             with btn_col2:
                 delete_task_click = st.form_submit_button("Delete Task")
-                st.html("<script>document.querySelectorAll('button[form=\"input_form\"]')[1].classList.add('red-btn');</script>")
                 if delete_task_click:
                     st.session_state.show_delete_dropdown = True
                     st.session_state.force_expand_list = True
@@ -122,7 +104,6 @@ if st.session_state.mode == "adding":
             with btn_col3:
                 black_btn_label = "Yes, Everything" if st.session_state.confirm_delete_list else "Delete List"
                 delete_list_click = st.form_submit_button(black_btn_label)
-                st.html("<script>document.querySelectorAll('button[form=\"input_form\"]')[2].classList.add('black-btn');</script>")
                 if delete_list_click:
                     if not st.session_state.confirm_delete_list:
                         st.session_state.confirm_delete_list = True
@@ -166,38 +147,16 @@ if st.session_state.mode == "adding":
         st.markdown("---")
         
         if len(st.session_state.tasks) > 0:
-            st.html("""
-                <style>
-                .centered-big-button {
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    margin-top: 25px;
-                }
-                button.blue-giant-btn {
-                    border: 4px solid #007bff !important;
-                    background-color: transparent !important;
-                    font-size: 26px !important;
-                    padding: 20px 44px !important;
-                    height: auto !important;
-                    width: auto !important;
-                    font-weight: bold !important;
-                    border-radius: 8px !important;
-                }
-                </style>
-            """)
-            
-            st.html("<div class='centered-big-button'>")
+            # Clean layout rows for the "Start Working" button
+            st.html("<div style='display: flex; justify-content: center; margin-top: 25px;'>")
             if st.button("Start Working", key="start_working_big"):
                 st.session_state.mode = "working"
                 st.session_state.current_index = 0
                 st.rerun()
-            st.html("<script>document.getElementById('root').querySelector('button:has(div:contains(\"Start Working\"))').classList.add('blue-giant-btn');</script>")
             st.html("</div>")
 
 # --- 3. MODE: WORKING ON TASKS ---
 elif st.session_state.mode == "working":
-    # Added layout adjustments to push content down and keep things centered vertically
     st.write("")
     st.write("")
 
@@ -207,38 +166,15 @@ elif st.session_state.mode == "working":
 
         current_task = st.session_state.tasks[st.session_state.current_index]
         
-        # Styles for the non-clickable focus frame block matching original title typography
-        st.html("""
-            <style>
-            .task-focus-container {
-                border: 4px solid #007bff;
-                padding: 30px;
-                border-radius: 10px;
-                text-align: center;
-                margin-bottom: 35px;
-                background-color: transparent;
-            }
-            .task-focus-title {
-                font-size: 42px;
-                font-weight: 700;
-                color: inherit;
-                margin-bottom: 10px;
-            }
-            .task-focus-prereq {
-                font-size: 18px;
-                margin-top: 15px;
-            }
-            </style>
-        """)
-
-        # Main Attention-Grabbing Blue Frame Container
-        st.html("<div class='task-focus-container'>")
-        st.html(f"<div class='task-focus-title'>Current Task: {current_task['name']}</div>")
+        # Displaying ONLY the pure task name text centered in a title format scale
+        st.html(f"<h1 style='text-align: center; margin-bottom: 20px;'>{current_task['name']}</h1>")
+        
         if current_task['prereq']:
-            st.html(f"<div class='task-focus-prereq'>⚠️ <strong>Prerequisite reminder:</strong> You need to finish this task first:<br> {current_task['prereq']}</div>")
-        st.html("</div>")
+            st.warning(f"⚠️ **Prerequisite reminder:** You need to finish this task first: **{current_task['prereq']}**")
+        
+        st.write("")
+        st.write("")
 
-        # Three perfectly centered action columns replacing the original dual setup
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -257,7 +193,6 @@ elif st.session_state.mode == "working":
                 st.rerun()
 
         with col3:
-            # New navigation switch to return directly to editing view
             if st.button("↩️ Check the list again", use_container_width=True):
                 st.session_state.mode = "adding"
                 st.rerun()
