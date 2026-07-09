@@ -183,6 +183,7 @@ elif st.session_state.mode == "working":
         
         with col1:
             if st.button("👍 Yes, I completed it!", use_container_width=True):
+                st.sidebar.success("Great job! You've completed a task!")
                 del st.session_state.tasks[st.session_state.current_index]
                 save_tasks_locally()
                 if st.session_state.current_index >= len(st.session_state.tasks):
