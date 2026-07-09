@@ -66,10 +66,10 @@ if st.session_state.mode == "adding":
 
         if st.session_state.confirm_delete_list:
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
-            st.sidebar.button("Go Back", Key="go_back_btn", help="Cancel list clearing", type="secondary")
-            st.st.session_state.confirm_delete_list = False
-            st.session_state.show_delete_dropdown = False
-            st.rerun()
+            if st.sidebar.button("Go Back", key="go_back_btn", help="Cancel list clearing", type="secondary"):
+                st.session_state.confirm_delete_list = False
+                st.session_state.show_delete_dropdown = False
+                st.rerun()
             
             # Standard button retained in its position
             # if st.button("Go Back", key="go_back_btn", help="Cancel list clearing", type="secondary"):
@@ -211,4 +211,3 @@ elif st.session_state.mode == "working":
             st.session_state.mode = "adding"
             save_tasks_locally()
             st.rerun()
-            
