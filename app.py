@@ -40,7 +40,7 @@ if "confirm_delete_list" not in st.session_state:
 if "force_expand_list" not in st.session_state:
     st.session_state.force_expand_list = True
 
-LIMIT = 50
+LIMIT = 100
 
 def save_tasks_locally():
     tasks_string = json.dumps(st.session_state.tasks)
@@ -129,7 +129,7 @@ if st.session_state.mode == "adding":
                         st.session_state.show_delete_dropdown = False
                         st.rerun()
                     else:
-                        st.sidebar.error("You have reached the task limit of 50!")
+                        st.sidebar.error("You have reached the task limit of 100!")
                 else:
                     st.sidebar.warning("Please type a task name first!")
 
