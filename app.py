@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+import random
 from streamlit_cookies_manager import EncryptedCookieManager
 
 # --- 1. SECURE BROWSER STORAGE SETUP ---
@@ -40,7 +41,23 @@ if "confirm_delete_list" not in st.session_state:
 if "force_expand_list" not in st.session_state:
     st.session_state.force_expand_list = True
 
+# Tracking state for our custom message engine
+if "affirmation" not in st.session_state:
+    st.session_state.affirmation = None
+
 LIMIT = 100
+
+# High-compatibility cross-platform emojis paired with rewarding feedback phrases
+AFFIRMATIONS = [
+    "✨ Fantastic job getting that done!",
+    "🎉 Way to cross that off your list!",
+    "🚀 Outstanding momentum! Keep it going!",
+    "⭐ Brilliant effort on this task!",
+    "🎯 Crushing your goals one step at a time!",
+    "🏆 Victory! Another item successfully completed!",
+    "🌈 Spectacular execution!",
+    "⚡ Pure efficiency! You're doing amazing!"
+]
 
 def save_tasks_locally():
     tasks_string = json.dumps(st.session_state.tasks)
@@ -66,12 +83,6 @@ if st.session_state.mode == "adding":
 
         if st.session_state.confirm_delete_list:
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
-            
-            # Standard button retained in its position
-            if st.button("Go Back", key="go_back_btn", help="Cancel list clearing", type="secondary"):
-                st.session_state.confirm_delete_list = False
-                st.session_state.show_delete_dropdown = False
-                st.rerun()
 
     with right_col:
         st.html("<h2 style='text-align: center; margin-bottom: 20px;'>Build Your List</h2>")
@@ -129,9 +140,27 @@ if st.session_state.mode == "adding":
                         st.session_state.show_delete_dropdown = False
                         st.rerun()
                     else:
-                        st.sidebar.error("You have reached the task limit of 100!")
+                        st.sidebar.error(f"You have reached the task limit of {LIMIT}!")
                 else:
                     st.sidebar.warning("Please type a task name first!")
+
+        # Double-sized "Go Back" button layout outside of the task creation form structure
+        if st.session_state.confirm_delete_list:
+            st.html("""
+                <style>
+                button.giant-goback-btn {
+                    font-size: 24px !important;
+                    padding: 16px 32px !important;
+                    height: auto !important;
+                    width: 100% !important;
+                }
+                </style>
+            """)
+            if st.button("Go Back", key="go_back_btn"):
+                st.session_state.confirm_delete_list = False
+                st.session_state.show_delete_dropdown = False
+                st.rerun()
+            st.html("<script>document.getElementById('root').querySelector('button:has(div:contains(\"Go Back\"))').classList.add('giant-goback-btn');</script>")
 
         if st.session_state.show_delete_dropdown and len(st.session_state.tasks) > 0:
             task_numbers = [str(i) for i in range(1, len(st.session_state.tasks) + 1)]
@@ -147,11 +176,11 @@ if st.session_state.mode == "adding":
         st.markdown("---")
         
         if len(st.session_state.tasks) > 0:
-            # Clean layout rows for the "Start Working" button
             st.html("<div style='display: flex; justify-content: center; margin-top: 25px;'>")
             if st.button("Start Working", key="start_working_big"):
                 st.session_state.mode = "working"
                 st.session_state.current_index = 0
+                st.session_state.affirmation = None  # Reset messages
                 st.rerun()
             st.html("</div>")
 
@@ -166,7 +195,6 @@ elif st.session_state.mode == "working":
 
         current_task = st.session_state.tasks[st.session_state.current_index]
         
-        # Displaying ONLY the pure task name text centered in a title format scale
         st.html(f"<h1 style='text-align: center; margin-bottom: 20px;'>{current_task['name']}</h1>")
         
         if current_task['prereq']:
@@ -181,6 +209,10 @@ elif st.session_state.mode == "working":
             if st.button("👍 Yes, I completed it!", use_container_width=True):
                 del st.session_state.tasks[st.session_state.current_index]
                 save_tasks_locally()
+                
+                # Roll a fresh random affirmation message on completion
+                st.session_state.affirmation = random.choice(AFFIRMATIONS)
+                
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
                 st.rerun()
@@ -188,6 +220,7 @@ elif st.session_state.mode == "working":
         with col2:
             if st.button("👎 No, skip it for now", use_container_width=True):
                 st.session_state.current_index += 1
+                st.session_state.affirmation = None  # Clear validation message
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
                 st.rerun()
@@ -195,7 +228,14 @@ elif st.session_state.mode == "working":
         with col3:
             if st.button("↩️ Check the list again", use_container_width=True):
                 st.session_state.mode = "adding"
+                st.session_state.affirmation = None  # Clear validation message
                 st.rerun()
+
+        # Renders the celebration text beautifully centered beneath your buttons
+        if st.session_state.affirmation:
+            st.write("")
+            st.write("")
+            st.html(f"<div style='text-align: center; font-size: 28px; font-weight: 400; color: inherit;'>{st.session_state.affirmation}</div>")
 
     else:
         st.balloons()
@@ -205,6 +245,7 @@ elif st.session_state.mode == "working":
             st.session_state.tasks = []
             st.session_state.current_index = 0
             st.session_state.mode = "adding"
+            st.session_state.affirmation = None
             save_tasks_locally()
             st.rerun()
             
