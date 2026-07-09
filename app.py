@@ -65,11 +65,13 @@ if st.session_state.mode == "adding":
                 st.write("Your list is currently empty.")
 
         if st.session_state.confirm_delete_list:
-            st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
+            st.sidebar.error(("Are you sure you want to delete the WHOLE list? This can't be undone.")
+            
+            # Standard button retained in its position
             if st.button("Go Back", key="go_back_btn", help="Cancel list clearing", type="secondary"):
-               st.session_state.confirm_delete_list = False
-               st.session_state.show_delete_dropdown = False
-               st.rerun()
+                st.session_state.confirm_delete_list = False
+                st.session_state.show_delete_dropdown = False
+                st.rerun()
 
     with right_col:
         st.html("<h2 style='text-align: center; margin-bottom: 20px;'>Build Your List</h2>")
