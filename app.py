@@ -66,16 +66,12 @@ if st.session_state.mode == "adding":
 
         if st.session_state.confirm_delete_list:
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
-            if st.sidebar.button("Go Back", key="go_back_btn", help="Cancel list clearing", type="secondary"):
+            
+            # Standard button retained in its position
+            if st.button("Go Back", key="go_back_btn", help="Cancel list clearing", type="secondary"):
                 st.session_state.confirm_delete_list = False
                 st.session_state.show_delete_dropdown = False
                 st.rerun()
-            
-            # Standard button retained in its position
-            # if st.button("Go Back", key="go_back_btn", help="Cancel list clearing", type="secondary"):
-            #    st.session_state.confirm_delete_list = False
-            #    st.session_state.show_delete_dropdown = False
-            #    st.rerun()
 
     with right_col:
         st.html("<h2 style='text-align: center; margin-bottom: 20px;'>Build Your List</h2>")
@@ -187,9 +183,7 @@ elif st.session_state.mode == "working":
                 save_tasks_locally()
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
-                    st.sidebar.success("Great job! You've completed a task!")
-                # st.rerun()
-                
+                st.rerun()
 
         with col2:
             if st.button("👎 No, skip it for now", use_container_width=True):
@@ -213,3 +207,4 @@ elif st.session_state.mode == "working":
             st.session_state.mode = "adding"
             save_tasks_locally()
             st.rerun()
+            
