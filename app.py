@@ -1,17 +1,41 @@
 import streamlit as st
 import json
 import random
+from streamlit_cookies_manager import EncryptedCookieManager
 
-# Initialize fallback session tracker instantly
+# --- 1. SECURE BROWSER STORAGE SETUP (CHUNKED COOKIES) ---
+cookies = EncryptedCookieManager(
+    prefix="allons_y_tasks/",
+    password=st.secrets.get("cookie_password", "KeepItSecretKeepItSafe123!")
+)
+
+if not cookies.ready():
+    st.stop()
+
+# Reconstruct the list from separate cookie chunks on page load
 if "tasks" not in st.session_state:
-    # Pull instantly from the URL query parameter on page load before anything else renders
-    saved_tasks_raw = st.query_params.get("tasks_data")
-    if saved_tasks_raw:
-        try:
-            st.session_state.tasks = json.loads(saved_tasks_raw)
-        except Exception:
-            st.session_state.tasks = []
-    else:
+    try:
+        chunk_count_raw = cookies.get("chunk_count")
+        if chunk_count_raw:
+            chunk_count = int(chunk_count_raw)
+            full_json_string = ""
+            for i in range(chunk_count):
+                part = cookies.get(f"tasks_chunk_{i}")
+                if part:
+                    full_json_string += part
+            
+            if full_json_string:
+                st.session_state.tasks = json.loads(full_json_string)
+            else:
+                st.session_state.tasks = []
+        else:
+            # Fallback legacy support for old single-cookie lists if they exist
+            saved_tasks_raw = cookies.get("tasks_data")
+            if saved_tasks_raw:
+                st.session_state.tasks = json.loads(saved_tasks_raw)
+            else:
+                st.session_state.tasks = []
+    except Exception:
         st.session_state.tasks = []
 
 # Title is only shown when building the list now
@@ -51,8 +75,22 @@ AFFIRMATIONS = [
 
 def save_tasks_locally():
     tasks_string = json.dumps(st.session_state.tasks)
-    # Native synchronous write—saves instantly to the browser URL string with no timing delays
-    st.query_params["tasks_data"] = tasks_string
+    
+    # Clean up any existing stale chunks first
+    for key in list(cookies.keys()):
+        if key.startswith("tasks_chunk_"):
+            del cookies[key]
+            
+    # Break down the 100-task string into safe 3,000-character segments
+    chunk_size = 3000
+    chunks = [tasks_string[i:i+chunk_size] for i in range(0, len(tasks_string), chunk_size)]
+    
+    # Store the count and individual chunks securely
+    cookies["chunk_count"] = str(len(chunks))
+    for idx, chunk in enumerate(chunks):
+        cookies[f"tasks_chunk_{idx}"] = chunk
+        
+    cookies.save()
 
 # --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
