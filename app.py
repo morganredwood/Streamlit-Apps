@@ -2,24 +2,17 @@ import streamlit as st
 import json
 import random
 
-# --- 1. HIGH-CAPACITY LOCAL STORAGE SETUP ---
-# Pure, direct connection to browser storage block (No cookies allowed)
-st.html("""
-    <script>
-    const sendToStreamlit = (data) => {
-        window.parent.postMessage({type: 'streamlit:setComponentValue', value: data}, '*');
-    }
-    const savedData = localStorage.getItem('allons_y_tasks_data');
-    if (savedData) {
-        sendToStreamlit(savedData);
-    } else {
-        sendToStreamlit('[]');
-    }
-    </script>
-""")
-
+# Initialize fallback session tracker instantly
 if "tasks" not in st.session_state:
-    st.session_state.tasks = []
+    # Pull instantly from the URL query parameter on page load before anything else renders
+    saved_tasks_raw = st.query_params.get("tasks_data")
+    if saved_tasks_raw:
+        try:
+            st.session_state.tasks = json.loads(saved_tasks_raw)
+        except Exception:
+            st.session_state.tasks = []
+    else:
+        st.session_state.tasks = []
 
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
@@ -58,11 +51,8 @@ AFFIRMATIONS = [
 
 def save_tasks_locally():
     tasks_string = json.dumps(st.session_state.tasks)
-    st.html(f"""
-        <script>
-        localStorage.setItem('allons_y_tasks_data', JSON.stringify({tasks_string}));
-        </script>
-    """)
+    # Native synchronous write—saves instantly to the browser URL string with no timing delays
+    st.query_params["tasks_data"] = tasks_string
 
 # --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
