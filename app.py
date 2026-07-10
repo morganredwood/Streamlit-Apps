@@ -1,27 +1,52 @@
 import streamlit as st
 import json
 import random
+from streamlit_cookies_manager import EncryptedCookieManager
 
-# --- 1. SECURE BROWSER LOCAL STORAGE SETUP ---
-# Swapped cookie manager for high-capacity HTML5 local storage
+# --- 1. TEMPORARY RECOVERY & STORAGE SETUP ---
+# Bring back the cookie manager just to read the old data
+cookies = EncryptedCookieManager(
+    prefix="allons_y_tasks/",
+    password=st.secrets.get("cookie_password", "KeepItSecretKeepItSafe123!")
+)
+
+if not cookies.ready():
+    st.stop()
+
+# Initialize fallback session tracker
+if "tasks" not in st.session_state:
+    st.session_state.tasks = []
+
+# THE RECOVERY BRIDGE: Check for old cookie data and migrate it
+if not st.session_state.get('migration_complete'):
+    saved_tasks_raw = cookies.get("tasks_data")
+    if saved_tasks_raw:
+        try:
+            # Grab the old list that got cut off or stored
+            st.session_state.tasks = json.loads(saved_tasks_raw)
+            # Instantly push it into the new large local storage
+            tasks_string = json.dumps(st.session_state.tasks)
+            st.html(f"""
+                <script>
+                localStorage.setItem('allons_y_tasks_data', JSON.stringify({tasks_string}));
+                </script>
+            """)
+            st.session_state.migration_complete = True
+        except Exception:
+            pass
+
+# Set up the high-capacity storage for normal operation
 st.html("""
     <script>
     const sendToStreamlit = (data) => {
         window.parent.postMessage({type: 'streamlit:setComponentValue', value: data}, '*');
     }
-    // Pull saved tasks on load
     const savedData = localStorage.getItem('allons_y_tasks_data');
     if (savedData) {
         sendToStreamlit(savedData);
-    } else {
-        sendToStreamlit('[]');
     }
     </script>
 """)
-
-# Initialize fallback session tracker
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
 
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
@@ -60,21 +85,11 @@ AFFIRMATIONS = [
 
 def save_tasks_locally():
     tasks_string = json.dumps(st.session_state.tasks)
-    # Safely injects the list directly into the browser's large local storage block
     st.html(f"""
         <script>
         localStorage.setItem('allons_y_tasks_data', JSON.stringify({tasks_string}));
         </script>
     """)
-
-# Custom hook to load data into state safely
-def load_injected_tasks(raw_json):
-    if raw_json and not st.session_state.get('loaded_from_browser'):
-        try:
-            st.session_state.tasks = json.loads(raw_json)
-            st.session_state.loaded_from_browser = True
-        except Exception:
-            pass
 
 # --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
@@ -255,4 +270,3 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_locally()
             st.rerun()
-            
