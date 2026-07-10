@@ -1,41 +1,9 @@
 import streamlit as st
 import json
 import random
-from streamlit_cookies_manager import EncryptedCookieManager
 
-# --- 1. TEMPORARY RECOVERY & STORAGE SETUP ---
-# Bring back the cookie manager just to read the old data
-cookies = EncryptedCookieManager(
-    prefix="allons_y_tasks/",
-    password=st.secrets.get("cookie_password", "KeepItSecretKeepItSafe123!")
-)
-
-if not cookies.ready():
-    st.stop()
-
-# Initialize fallback session tracker
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
-
-# THE RECOVERY BRIDGE: Check for old cookie data and migrate it
-if not st.session_state.get('migration_complete'):
-    saved_tasks_raw = cookies.get("tasks_data")
-    if saved_tasks_raw:
-        try:
-            # Grab the old list that got cut off or stored
-            st.session_state.tasks = json.loads(saved_tasks_raw)
-            # Instantly push it into the new large local storage
-            tasks_string = json.dumps(st.session_state.tasks)
-            st.html(f"""
-                <script>
-                localStorage.setItem('allons_y_tasks_data', JSON.stringify({tasks_string}));
-                </script>
-            """)
-            st.session_state.migration_complete = True
-        except Exception:
-            pass
-
-# Set up the high-capacity storage for normal operation
+# --- 1. HIGH-CAPACITY LOCAL STORAGE SETUP ---
+# Pure, direct connection to browser storage block (No cookies allowed)
 st.html("""
     <script>
     const sendToStreamlit = (data) => {
@@ -44,9 +12,14 @@ st.html("""
     const savedData = localStorage.getItem('allons_y_tasks_data');
     if (savedData) {
         sendToStreamlit(savedData);
+    } else {
+        sendToStreamlit('[]');
     }
     </script>
 """)
+
+if "tasks" not in st.session_state:
+    st.session_state.tasks = []
 
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
@@ -270,3 +243,4 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_locally()
             st.rerun()
+            
