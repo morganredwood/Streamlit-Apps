@@ -1,30 +1,31 @@
 import streamlit as st
 import json
 import random
-from streamlit_cookies_manager import EncryptedCookieManager
 
-# --- 1. SECURE BROWSER STORAGE SETUP ---
-cookies = EncryptedCookieManager(
-    prefix="allons_y_tasks/",
-    password=st.secrets.get("cookie_password", "KeepItSecretKeepItSafe123!")
-)
+# --- 1. SECURE BROWSER LOCAL STORAGE SETUP ---
+# Swapped cookie manager for high-capacity HTML5 local storage
+st.html("""
+    <script>
+    const sendToStreamlit = (data) => {
+        window.parent.postMessage({type: 'streamlit:setComponentValue', value: data}, '*');
+    }
+    // Pull saved tasks on load
+    const savedData = localStorage.getItem('allons_y_tasks_data');
+    if (savedData) {
+        sendToStreamlit(savedData);
+    } else {
+        sendToStreamlit('[]');
+    }
+    </script>
+""")
 
-if not cookies.ready():
-    st.stop()
+# Initialize fallback session tracker
+if "tasks" not in st.session_state:
+    st.session_state.tasks = []
 
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
     st.title("Executive Function Assistant")
-
-if "tasks" not in st.session_state:
-    saved_tasks_raw = cookies.get("tasks_data")
-    if saved_tasks_raw:
-        try:
-            st.session_state.tasks = json.loads(saved_tasks_raw)
-        except Exception:
-            st.session_state.tasks = []
-    else:
-        st.session_state.tasks = []  
 
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0  
@@ -41,13 +42,11 @@ if "confirm_delete_list" not in st.session_state:
 if "force_expand_list" not in st.session_state:
     st.session_state.force_expand_list = True
 
-# Tracking state for our custom message engine
 if "affirmation" not in st.session_state:
     st.session_state.affirmation = None
 
 LIMIT = 100
 
-# High-compatibility cross-platform emojis paired with rewarding feedback phrases
 AFFIRMATIONS = [
     "✨ Fantastic job getting that done!",
     "🎉 Way to cross that off your list!",
@@ -61,8 +60,21 @@ AFFIRMATIONS = [
 
 def save_tasks_locally():
     tasks_string = json.dumps(st.session_state.tasks)
-    cookies["tasks_data"] = tasks_string
-    cookies.save()
+    # Safely injects the list directly into the browser's large local storage block
+    st.html(f"""
+        <script>
+        localStorage.setItem('allons_y_tasks_data', JSON.stringify({tasks_string}));
+        </script>
+    """)
+
+# Custom hook to load data into state safely
+def load_injected_tasks(raw_json):
+    if raw_json and not st.session_state.get('loaded_from_browser'):
+        try:
+            st.session_state.tasks = json.loads(raw_json)
+            st.session_state.loaded_from_browser = True
+        except Exception:
+            pass
 
 # --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
@@ -144,7 +156,6 @@ if st.session_state.mode == "adding":
                 else:
                     st.sidebar.warning("Please type a task name first!")
 
-        # Double-sized "Go Back" button layout outside of the task creation form structure
         if st.session_state.confirm_delete_list:
             st.html("""
                 <style>
@@ -180,7 +191,7 @@ if st.session_state.mode == "adding":
             if st.button("Start Working", key="start_working_big"):
                 st.session_state.mode = "working"
                 st.session_state.current_index = 0
-                st.session_state.affirmation = None  # Reset messages
+                st.session_state.affirmation = None
                 st.rerun()
             st.html("</div>")
 
@@ -209,10 +220,7 @@ elif st.session_state.mode == "working":
             if st.button("👍 Yes, I completed it!", use_container_width=True):
                 del st.session_state.tasks[st.session_state.current_index]
                 save_tasks_locally()
-                
-                # Roll a fresh random affirmation message on completion
                 st.session_state.affirmation = random.choice(AFFIRMATIONS)
-                
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
                 st.rerun()
@@ -220,7 +228,7 @@ elif st.session_state.mode == "working":
         with col2:
             if st.button("👎 No, skip it for now", use_container_width=True):
                 st.session_state.current_index += 1
-                st.session_state.affirmation = None  # Clear validation message
+                st.session_state.affirmation = None
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
                 st.rerun()
@@ -228,10 +236,9 @@ elif st.session_state.mode == "working":
         with col3:
             if st.button("↩️ Check the list again", use_container_width=True):
                 st.session_state.mode = "adding"
-                st.session_state.affirmation = None  # Clear validation message
+                st.session_state.affirmation = None
                 st.rerun()
 
-        # Renders the celebration text beautifully centered beneath your buttons
         if st.session_state.affirmation:
             st.write("")
             st.write("")
