@@ -1,61 +1,34 @@
 import streamlit as st
 import json
 import random
-import time
-from streamlit_cookies_manager import EncryptedCookieManager
+import os
 
-# --- 1. SECURE STORAGE SETUP With LOADING DEFENSE ---
-cookies = EncryptedCookieManager(
-    prefix="allons_y_tasks/",
-    password=st.secrets.get("cookie_password", "KeepItSecretKeepItSafe123!")
-)
+# --- 1. BULLETPROOF LOCAL FILE STORAGE SETUP ---
+BACKUP_FILE = "task_backup.json"
 
-if not cookies.ready():
-    st.stop()
+def load_tasks_from_file():
+    """Instantly reads the JSON backup file on local disk."""
+    if os.path.exists(BACKUP_FILE):
+        try:
+            with open(BACKUP_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
 
-# Track explicitly if the app has successfully read the browser state
-if "cookies_loaded" not in st.session_state:
-    st.session_state.cookies_loaded = False
-
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
-
-# DEFENSIVE LOAD: Only pull if we haven't successfully established state this session
-if not st.session_state.cookies_loaded:
+def save_tasks_to_file():
+    """Instantly saves the current list to local disk."""
     try:
-        chunk_count_raw = cookies.get("chunk_count")
-        
-        # If the manager is technically ready but returning None for a known list,
-        # pause briefly to allow the async browser pipeline to catch up
-        if chunk_count_raw is None:
-            time.sleep(0.2)
-            chunk_count_raw = cookies.get("chunk_count")
+        with open(BACKUP_FILE, "w") as f:
+            json.dump(st.session_state.tasks, f, indent=4)
+    except Exception as e:
+        st.sidebar.error(f"Save Error: {e}")
 
-        if chunk_count_raw is not None:
-            chunk_count = int(chunk_count_raw)
-            full_json_string = ""
-            for i in range(chunk_count):
-                part = cookies.get(f"tasks_chunk_{i}")
-                if part:
-                    full_json_string += part
-            
-            if full_json_string:
-                st.session_state.tasks = json.loads(full_json_string)
-            st.session_state.cookies_loaded = True
-        else:
-            # Check for legacy single-cookie support
-            saved_tasks_raw = cookies.get("tasks_data")
-            if saved_tasks_raw:
-                st.session_state.tasks = json.loads(saved_tasks_raw)
-            else:
-                st.session_state.tasks = []
-            # Even if it's an empty list, explicitly verify that we checked a ready state
-            st.session_state.cookies_loaded = True
-    except Exception:
-        st.session_state.tasks = []
-        st.session_state.cookies_loaded = True
+# Initialize tasks instantly from disk on page load
+if "tasks" not in st.session_state:
+    st.session_state.tasks = load_tasks_from_file()
 
-# Title logic
+# Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
     st.title("Executive Function Assistant")
 
@@ -89,29 +62,6 @@ AFFIRMATIONS = [
     "🌈 Spectacular execution!",
     "⚡ Pure efficiency! You're doing amazing!"
 ]
-
-def save_tasks_locally():
-    # SAFETY GUARD: If cookies haven't finished loading yet, block any save calls 
-    # so we never accidentally overwrite your good browser data with a blank initialization list.
-    if not st.session_state.get("cookies_loaded", False):
-        return
-
-    tasks_string = json.dumps(st.session_state.tasks)
-    
-    # Clean up old chunks
-    for key in list(cookies.keys()):
-        if key.startswith("tasks_chunk_"):
-            del cookies[key]
-            
-    # Segment data safely under the 4KB browser limit
-    chunk_size = 3000
-    chunks = [tasks_string[i:i+chunk_size] for i in range(0, len(tasks_string), chunk_size)]
-    
-    cookies["chunk_count"] = str(len(chunks))
-    for idx, chunk in enumerate(chunks):
-        cookies[f"tasks_chunk_{idx}"] = chunk
-        
-    cookies.save()
 
 # --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
@@ -173,7 +123,7 @@ if st.session_state.mode == "adding":
                         st.session_state.current_index = 0
                         st.session_state.confirm_delete_list = False
                         st.session_state.show_delete_dropdown = False
-                        save_tasks_locally()
+                        save_tasks_to_file()
                         st.rerun()
 
             if submit_task:
@@ -185,7 +135,7 @@ if st.session_state.mode == "adding":
                             "prereq": prereq_text.strip() if has_prereq == "Yes" and prereq_text.strip() else None
                         }
                         st.session_state.tasks.append(task_data)
-                        save_tasks_locally()
+                        save_tasks_to_file()
                         st.session_state.show_delete_dropdown = False
                         st.rerun()
                     else:
@@ -217,7 +167,7 @@ if st.session_state.mode == "adding":
             if selected_num != "None":
                 del_idx = int(selected_num) - 1
                 del st.session_state.tasks[del_idx]
-                save_tasks_locally()
+                save_tasks_to_file()
                 st.session_state.show_delete_dropdown = False
                 st.rerun()
 
@@ -256,7 +206,7 @@ elif st.session_state.mode == "working":
         with col1:
             if st.button("👍 Yes, I completed it!", use_container_width=True):
                 del st.session_state.tasks[st.session_state.current_index]
-                save_tasks_locally()
+                save_tasks_to_file()
                 st.session_state.affirmation = random.choice(AFFIRMATIONS)
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
@@ -290,5 +240,6 @@ elif st.session_state.mode == "working":
             st.session_state.current_index = 0
             st.session_state.mode = "adding"
             st.session_state.affirmation = None
-            save_tasks_locally()
+            save_tasks_to_file()
             st.rerun()
+            
