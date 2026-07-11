@@ -1,0 +1,149 @@
+1.	Lesson 1 module
+	videos
+2.	Lesson 2 module
+	videos
+3.	Lesson 3 module
+	videos
+4.	Lesson 4 module
+	videos
+5.	Lesson 5 module
+	videos
+6.	Lesson 6 module
+	videos
+7.	Lesson 7 module
+	videos
+8.	Lesson 8 module
+	videos
+9.	Lesson 9 module
+	videos
+10.	Lesson 10 module
+	videos
+11.	Lesson 11 module
+	videos
+12.	Lesson 12 module
+	videos
+13.	Lesson 13 module
+	videos
+14.	Lesson 14 module
+	videos
+15.	Lesson 15 module
+	videos
+16.	Lesson 16 module
+	videos
+17.	Lesson 17 module
+	videos
+18.	Lesson 18 module
+	videos
+19. 	Lesson 19 module
+	videos
+20.	Lesson 20 module
+	videos
+21.	Lesson 1 videos
+22.	Lesson 2 videos
+23.	Lesson 3 videos
+24.	Lesson 4 videos
+25.	Lesson 5 videos
+26.	Lesson 6 videos
+27. 	Lesson 7 videos
+28.	Lesson 8 videos
+29. 	Lesson 9 videos
+30. 	Lesson 10 videos
+31.	Lesson 11 videos
+32.	Lesson 12 videos
+33.	Lesson 13 videos
+34.	Lesson 14 videos
+35.	Lesson 15 videos
+36.	Lesson 16 videos
+37.	Lesson 17 videos
+38.	Lesson 18 videos
+39.	Lesson 19 videos
+40.	Lesson 20 videos
+41.	Final exam retake.
+	all other course content
+42.	Check Outlook.
+43.	Check Gmail.
+44.	Update your financial ledgers.
+45.	Update your budget/subscription list.
+46.	Start your grocery list.
+47.	Finish your grocery list.
+	Update your ledgers and your budget/subscription list.
+48.	Order your groceries if possible.
+	Make sure the weather is still okay enough for that.
+49.	Put away all the clean laundry.
+50.	Wash a load of laundry with bras.
+	Put the bras in laundry bags.
+51.	Hang up the load of bras to dry.
+	Wash the load of laundry with bras.
+52.	Wash a load of laundry.
+	Hang up the load of bras to dry.
+53.	Dry the load of laundry.
+	Wash the load of laundry.
+54.	Put away the clean laundry.
+	Put away all clean laundry from prior loads.
+55.	Wash a load of laundry.
+	Dry the load of laundry in the washer.
+56.	Dry the load of laundry in the washer.
+	Put away the load of laundry from the dryer.
+57.	Put away the laundry from the dryer.
+	Put away all prior loads of clean laundry.
+58.	Wash a load of dishes.
+59.	Put away a load of dishes.
+	Wash a load of dishes.
+60.	Wash a load of dishes.
+	Put away a load of dishes.
+61.	Put away a load of dishes.
+	Wash a load of dishes.
+62.	Wash a load of dishes.
+	Put away a load of dishes.
+63.	Put away a load of dishes.
+	Wash a load of dishes.
+64.	Wash a load of dishes.
+	Put away a load of dishes.
+65.	Put away a load of dishes.
+	Wash a load of dishes.
+66.	Wash a load of dishes.
+	Put away a load of dishes.
+67.	Put on your outside shoes.
+68.	Put Teddy's harness on him.
+	Put on your outside shoes.
+69.	Take out the trash.
+	Put Teddy's harness on him.
+70.	Check the car for anything that needs to be cleaned or fixed.
+	Take out the trash.
+71.	Replace the trash bags.
+	Take out the trash.
+72.	Floss your teeth.
+73.	Brush your teeth.
+	Floss your teeth.
+74.	Put in your retainer.
+	Brush your teeth.
+75.	Drink a glass of water.
+76. 	Drink a glass of water.
+77.	Drink a glass of water.
+78.	Drink a glass of water.
+79.	Feed Teddy.
+80.	Eat supper.
+81.	Make the bed.
+82.	Log your blood pressure.
+83.	Log your weight.
+84.	Log your mattress protector change.
+85.	Log your sheets change.
+86.	Update your accountability notebook.
+87.	Send Pam your latest accountability update.
+	Update your accountability notebook.
+88.	Update your appointment book and planners.
+89.	Update your project box of index cards.
+90. 	Delete Duolingo progress.
+91.	Delete Memrise progress.
+92.	Delete Rosetta Stone progress.
+93.	Delete HelloChinese progress.
+94.	Read Luke plan devotional in Spanish.
+95.	Read M'Cheyne passages in Spanish.
+96.	Read "I Want a Popsicle!" in Chinese.
+97.	Read Luke plan passages in Chinese.
+98.	Complete an Hoy Hablamos podcast and its exercises.
+99.	Contact Sergio about the oil change and AC issues and brake pad issues.
+	Clean out the car and assess for further issues.
+100.	Reset the Nest thermostat.
+	Change the AC filter in the attic.
+	

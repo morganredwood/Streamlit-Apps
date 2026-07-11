@@ -1,0 +1,16 @@
+1. Created a list in Notepad of 100 tasks so I won't have to try and remember them in case I lose my list again.
+2. Opened the app. Added 10 tasks. There are now 10 total tasks.
+3. Refreshed the page. There are now 10 total tasks.
+4. Added 50 tasks. There are now 60 total tasks.
+5. Refreshed the page. There are now 60 total tasks.
+6. Refreshed the page again. There are now 60 total tasks.
+7. Added 10 tasks. There are now 70 total tasks.
+8. Refreshed the page. There are now 70 total tasks.
+9. Added 10 tasks. There are now 80 tasks.
+10.Refreshed the page. There are now 80 tasks.
+11.Add 10 tasks. There are now 90 tasks.
+12. Refreshed the page. There are now 90 tasks.
+13. Added 10 tasks. There are now 100 tasks.
+14. Refreshed the page. There are now 100 tasks.
+15. Refreshed the page again. There are now 100 tasks.
+
