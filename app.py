@@ -1,9 +1,10 @@
 import streamlit as st
 import json
 import random
+import time
 from streamlit_cookies_manager import EncryptedCookieManager
 
-# --- 1. SECURE BROWSER STORAGE SETUP (CHUNKED COOKIES) ---
+# --- 1. SECURE STORAGE SETUP With LOADING DEFENSE ---
 cookies = EncryptedCookieManager(
     prefix="allons_y_tasks/",
     password=st.secrets.get("cookie_password", "KeepItSecretKeepItSafe123!")
@@ -12,11 +13,25 @@ cookies = EncryptedCookieManager(
 if not cookies.ready():
     st.stop()
 
-# Reconstruct the list from separate cookie chunks on page load
+# Track explicitly if the app has successfully read the browser state
+if "cookies_loaded" not in st.session_state:
+    st.session_state.cookies_loaded = False
+
 if "tasks" not in st.session_state:
+    st.session_state.tasks = []
+
+# DEFENSIVE LOAD: Only pull if we haven't successfully established state this session
+if not st.session_state.cookies_loaded:
     try:
         chunk_count_raw = cookies.get("chunk_count")
-        if chunk_count_raw:
+        
+        # If the manager is technically ready but returning None for a known list,
+        # pause briefly to allow the async browser pipeline to catch up
+        if chunk_count_raw is None:
+            time.sleep(0.2)
+            chunk_count_raw = cookies.get("chunk_count")
+
+        if chunk_count_raw is not None:
             chunk_count = int(chunk_count_raw)
             full_json_string = ""
             for i in range(chunk_count):
@@ -26,19 +41,21 @@ if "tasks" not in st.session_state:
             
             if full_json_string:
                 st.session_state.tasks = json.loads(full_json_string)
-            else:
-                st.session_state.tasks = []
+            st.session_state.cookies_loaded = True
         else:
-            # Fallback legacy support for old single-cookie lists if they exist
+            # Check for legacy single-cookie support
             saved_tasks_raw = cookies.get("tasks_data")
             if saved_tasks_raw:
                 st.session_state.tasks = json.loads(saved_tasks_raw)
             else:
                 st.session_state.tasks = []
+            # Even if it's an empty list, explicitly verify that we checked a ready state
+            st.session_state.cookies_loaded = True
     except Exception:
         st.session_state.tasks = []
+        st.session_state.cookies_loaded = True
 
-# Title is only shown when building the list now
+# Title logic
 if "mode" in st.session_state and st.session_state.mode == "adding":
     st.title("Executive Function Assistant")
 
@@ -74,18 +91,22 @@ AFFIRMATIONS = [
 ]
 
 def save_tasks_locally():
+    # SAFETY GUARD: If cookies haven't finished loading yet, block any save calls 
+    # so we never accidentally overwrite your good browser data with a blank initialization list.
+    if not st.session_state.get("cookies_loaded", False):
+        return
+
     tasks_string = json.dumps(st.session_state.tasks)
     
-    # Clean up any existing stale chunks first
+    # Clean up old chunks
     for key in list(cookies.keys()):
         if key.startswith("tasks_chunk_"):
             del cookies[key]
             
-    # Break down the 100-task string into safe 3,000-character segments
+    # Segment data safely under the 4KB browser limit
     chunk_size = 3000
     chunks = [tasks_string[i:i+chunk_size] for i in range(0, len(tasks_string), chunk_size)]
     
-    # Store the count and individual chunks securely
     cookies["chunk_count"] = str(len(chunks))
     for idx, chunk in enumerate(chunks):
         cookies[f"tasks_chunk_{idx}"] = chunk
@@ -271,4 +292,3 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_locally()
             st.rerun()
-            
