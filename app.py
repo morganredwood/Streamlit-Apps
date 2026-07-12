@@ -111,7 +111,7 @@ if st.session_state.mode == "adding":
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
 
     with right_col:
-        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {"Comic Sans"};'>Build Your List</h2>")
+        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
