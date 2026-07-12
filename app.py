@@ -57,7 +57,7 @@ if "tasks" not in st.session_state:
 
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
-    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Cavolini'};'>Executive Function Assistant</h1>")
+    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
 
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0  
@@ -111,7 +111,7 @@ if st.session_state.mode == "adding":
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
 
     with right_col:
-        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {"Cavolini"};'>Build Your List</h2>")
+        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {"Georgia"};'>Build Your List</h2>")
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
@@ -215,7 +215,7 @@ elif st.session_state.mode == "working":
 
         current_task = st.session_state.tasks[st.session_state.current_index]
         
-        st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>{current_task['name']}</h1>")
+        st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {"Georgia"};'>{current_task['name']}</h1>")
         
         if current_task['prereq']:
             st.warning(f"⚠️ **Prerequisite reminder:** You need to finish this task first: **{current_task['prereq']}**")
@@ -251,7 +251,7 @@ elif st.session_state.mode == "working":
         if st.session_state.affirmation:
             st.write("")
             st.write("")
-            st.html(f"<div style='text-align: center; font-size: 28px; font-weight: 400; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>{st.session_state.affirmation}</div>")
+            st.html(f"<div style='text-align: center; font-size: 28px; font-weight: 400; color: {"orange"}; font-family: {"Comic Sans MS"};'>{st.session_state.affirmation}</div>")
 
     else:
         st.balloons()
