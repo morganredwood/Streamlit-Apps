@@ -2,6 +2,23 @@ import streamlit as st
 import json
 import random
 import os
+# ==============================================================================
+# 🎨 CENTRAL STYLE CONFIGURATION (Change your fonts and colors here!)
+# ==============================================================================
+# You can change '#0000FF' to any hex color code, or standard words like 'blue', 'green', 'purple'
+TEXT_COLOR = "#0000FF"  
+
+# Change 'sans-serif' to any font from Microsoft Word (e.g., 'Calibri', 'Arial', 'Georgia')
+FONT_FAMILY = "sans-serif"  
+
+STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
+
+# 💡 QUICK REFERENCE REMINDERS:
+# To hardcode a specific color for just one element (like the active task title),
+# swap out {TEXT_COLOR} for a specific color name or hex code like this:
+# st.html(f"<h1 style='text-align: center; color: blue; font-family: {FONT_FAMILY};'>...</h1>")
+
+# ==============================================================================
 
 # --- 1. BULLETPROOF LOCAL FILE STORAGE SETUP ---
 BACKUP_FILE = "task_backup.json"
@@ -30,7 +47,7 @@ if "tasks" not in st.session_state:
 
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
-    st.title("Executive Function Assistant")
+    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Executive Function Assistant</h1>")
 
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0  
@@ -74,24 +91,25 @@ if st.session_state.mode == "adding":
             if len(st.session_state.tasks) > 0:
                 for i, t in enumerate(st.session_state.tasks, 1):
                     if t["prereq"]:
-                        st.write(f"{i}. **{t['name']}** \n*(Requires: {t['prereq']})*")
+                        st.html(f"{STYLE_WRAPPER}{i}. <b>{t['name']}</b> <br><i>(Requires: {t['prereq']})</i></div>")
                     else:
-                        st.write(f"{i}. **{t['name']}**")
+                        st.html(f"{STYLE_WRAPPER}{i}. <b>{t['name']}</b></div>")
             else:
-                st.write("Your list is currently empty.")
+                st.html(f"{STYLE_WRAPPER}Your list is currently empty.</div>")
 
         if st.session_state.confirm_delete_list:
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
 
     with right_col:
-        st.html("<h2 style='text-align: center; margin-bottom: 20px;'>Build Your List</h2>")
-        st.write(f"Current task count: {len(st.session_state.tasks)} / {LIMIT}")
+        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
+        st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
-            task_text = st.text_input("Enter a task you would like to add:")
+            st.html(f"{STYLE_WRAPPER}Enter a task you would like to add:</div>")
+            task_text = st.text_input(label="Task Input", label_visibility="collapsed")
             
-            # The dropdown is gone; this field is now always visible and entirely optional
-            prereq_text = st.text_input("What must be completed first? (Optional)")
+            st.html(f"{STYLE_WRAPPER}What must be completed first? (Optional)</div>")
+            prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
             btn_col1, btn_col2, btn_col3 = st.columns(3)
             
@@ -123,7 +141,6 @@ if st.session_state.mode == "adding":
                 task_text_cleaned = task_text.strip()
                 if task_text_cleaned != "":
                     if len(st.session_state.tasks) < LIMIT:
-                        # It automatically checks if anything was typed into the optional box
                         task_data = {
                             "name": task_text_cleaned,
                             "prereq": prereq_text.strip() if prereq_text.strip() else None
@@ -155,8 +172,9 @@ if st.session_state.mode == "adding":
             st.html("<script>document.getElementById('root').querySelector('button:has(div:contains(\"Go Back\"))').classList.add('giant-goback-btn');</script>")
 
         if st.session_state.show_delete_dropdown and len(st.session_state.tasks) > 0:
+            st.html(f"{STYLE_WRAPPER}Select task number to remove permanently:</div>")
             task_numbers = [str(i) for i in range(1, len(st.session_state.tasks) + 1)]
-            selected_num = st.selectbox("Select task number to remove permanently:", ["None"] + task_numbers)
+            selected_num = st.selectbox(label="Select Task Dropdown", options=["None"] + task_numbers, label_visibility="collapsed")
             
             if selected_num != "None":
                 del_idx = int(selected_num) - 1
@@ -187,7 +205,7 @@ elif st.session_state.mode == "working":
 
         current_task = st.session_state.tasks[st.session_state.current_index]
         
-        st.html(f"<h1 style='text-align: center; margin-bottom: 20px;'>{current_task['name']}</h1>")
+        st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>{current_task['name']}</h1>")
         
         if current_task['prereq']:
             st.warning(f"⚠️ **Prerequisite reminder:** You need to finish this task first: **{current_task['prereq']}**")
@@ -223,7 +241,7 @@ elif st.session_state.mode == "working":
         if st.session_state.affirmation:
             st.write("")
             st.write("")
-            st.html(f"<div style='text-align: center; font-size: 28px; font-weight: 400; color: inherit;'>{st.session_state.affirmation}</div>")
+            st.html(f"<div style='text-align: center; font-size: 28px; font-weight: 400; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>{st.session_state.affirmation}</div>")
 
     else:
         st.balloons()
@@ -236,4 +254,3 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_file()
             st.rerun()
-            
