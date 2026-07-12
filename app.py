@@ -55,45 +55,6 @@ LIMIT = 100
 AFFIRMATIONS = [
     "✨ Fantastic job getting that done!",
     "🎉 Way to cross that off your list!",
-    "⭐ You are capable and worthy of completing your tasks on time.",
-    "⭐ You are confident in your abilities and trust yourself to get things done!",
-    "🎉 You are determined to succeed and make progress!",
-    "🎉 You are managing your time efficiently!",
-    "🎉 Great job being proactive and taking initiative to complete your work!",
-    "🎉 You are committed to taking action and making progress!",
-    "🎉 You are determined to overcome procrastination and be productive!",
-    "🏆 You are focused and staying on track to complete your tasks!",
-    "🏆 You are disciplined and making the most of every moment!",
-    "🏆 You are capable of making the necessary changes to be more productive!",
-    "🏆 You are committed to taking control of your time and using it wisely!",
-    "⚡ You are constantly seeking ways to improve your skills!",
-    "⚡ You are focused on achieving excellence in your work!",
-    "⚡ You are calm and confident amidst challenges!",
-    "⚡ You set clear and achievable goals!",
-    "⚡ You find creative solutions to complex challenges!",
-    "⚡ You are capable of whatever you set your mind to!",
-    "⚡ Your goals are clear, achievable, and motivating!",
-    "⚡ Your skills and knowledge are expanding continually!",
-    "🌈 You are a catalyst for positive progress!",
-    "🌈 You honor your unique skills, interests, and talents!",
-    "🌈 You work with integrity and intention!",
-    "🌈 Be like a postage stamp: stick to one thing until you get there. -- Josh Billings",
-    "🌈 You can do two things at once, but you can't focus effectively on two things at once. -- Gary Keller",
-    "🌈 Should you find yourself in a chronically leaking boat, energy devoted to changing vessels is likely to be more productive than energy devoted to patching leaks. -- Warren Buffett",
-    "🌈 If I had six hours to chop down a tree, I would spend the first four hours sharpening the axe. -- Abraham Lincoln",
-    "🌈 Productivity is never an accident. It's always the result of a commitment to excellence, intelligent planning, and focused effort. -- Paul J. Meyer",
-    "🎯 The best time to start was last year. Failing that, today will do. -- Chris Guillebeau",
-    "🎯 The best thing about the future is that it comes one day at a time. -- Abraham Lincoln",
-    "🎯 He who every morning plans the transactions of that day and follows that plan carries a thread that will guide him through the labyrinth of the most busy life. -- Victor Hugo",
-    "🎯 The secret of getting ahead is getting started. The secret of getting started is breaking your complex overwhelming tasks into small manageable tasks, and starting on the first one. -- Mark Twain",
-    "🎯 Sometimes our stop-doing list needs to be bigger than our to-do list. -- Patti Digh",
-    "🎯 Before you eat the elephant, make sure you know what parts you want to eat. -- Todd Stocker",
-    "🎯 Rename your to-do list to your opportunities list. Each day is a treasure chest filled with limitless opportunities; take joy in checking many off your list. -- Steve Maraboli",
-    "🎯 Subtracting from your list of priorities is as important as adding to it. -- Frank Sonnenberg",
-    "🎯 No matter how expert you may be, well-designed checklists can improve outcomes. -- Steven Levitt",
-    "🎯 I long to accomplish a great and noble task, but it is my chief duty to accomplish small tasks as if they were great and noble. -- Helen Keller",
-    "🎯 No matter how great the talent or effort, some things just take time. -- Warren Buffett",    
-    "⭐ You're setting yourself up for success by being focused and determined!",
     "🚀 Outstanding momentum! Keep it going!",
     "⭐ Brilliant effort on this task!",
     "🎯 Crushing your goals one step at a time!",
@@ -126,18 +87,11 @@ if st.session_state.mode == "adding":
         st.html("<h2 style='text-align: center; margin-bottom: 20px;'>Build Your List</h2>")
         st.write(f"Current task count: {len(st.session_state.tasks)} / {LIMIT}")
 
-        has_prereq = st.selectbox(
-            "Does this task have a prerequisite?", 
-            ["No", "Yes"],
-            key="has_prereq_select"
-        )
-
         with st.form(key="input_form", clear_on_submit=True):
             task_text = st.text_input("Enter a task you would like to add:")
-
-            prereq_text = ""
-            if has_prereq == "Yes":
-                prereq_text = st.text_input("What must be completed first?")
+            
+            # The dropdown is gone; this field is now always visible and entirely optional
+            prereq_text = st.text_input("What must be completed first? (Optional)")
 
             btn_col1, btn_col2, btn_col3 = st.columns(3)
             
@@ -169,9 +123,10 @@ if st.session_state.mode == "adding":
                 task_text_cleaned = task_text.strip()
                 if task_text_cleaned != "":
                     if len(st.session_state.tasks) < LIMIT:
+                        # It automatically checks if anything was typed into the optional box
                         task_data = {
                             "name": task_text_cleaned,
-                            "prereq": prereq_text.strip() if has_prereq == "Yes" and prereq_text.strip() else None
+                            "prereq": prereq_text.strip() if prereq_text.strip() else None
                         }
                         st.session_state.tasks.append(task_data)
                         save_tasks_to_file()
@@ -281,3 +236,4 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_file()
             st.rerun()
+            
