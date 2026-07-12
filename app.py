@@ -6,7 +6,7 @@ import os
 # 🎨 CENTRAL STYLE CONFIGURATION (Change your fonts and colors here!)
 # ==============================================================================
 # You can change '#0000FF' to any hex color code, or standard words like 'blue', 'green', 'purple'
-TEXT_COLOR = "#0000FF"  
+TEXT_COLOR = "black"  
 # Native Markdown Colors (Fast & Safe)
 # Streamlit supports a built-in set of named colors using the syntax :colorname[your text].
 # These are automatically calibrated to look great in both Light and Dark modes:
