@@ -7,6 +7,16 @@ import os
 # ==============================================================================
 # You can change '#0000FF' to any hex color code, or standard words like 'blue', 'green', 'purple'
 TEXT_COLOR = "#0000FF"  
+# Native Markdown Colors (Fast & Safe)
+# Streamlit supports a built-in set of named colors using the syntax :colorname[your text].
+# These are automatically calibrated to look great in both Light and Dark modes:
+# :blue[your_text]
+# :green[your_text]
+# :orange[your_text]
+# :red[your_text]
+# :violet[your_text]
+# :gray[your_text] (also spans :grey[your_text])
+# :rainbow[your_text]
 
 # Change 'sans-serif' to any font from Microsoft Word (e.g., 'Calibri', 'Arial', 'Georgia')
 FONT_FAMILY = "sans-serif"  
