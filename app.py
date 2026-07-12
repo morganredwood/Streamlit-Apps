@@ -57,7 +57,7 @@ if "tasks" not in st.session_state:
 
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
-    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Comic Sans MS'};'>Executive Function Assistant</h1>")
+    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Lucida Handwriting'};'>Executive Function Assistant</h1>")
 
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0  
