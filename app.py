@@ -19,7 +19,7 @@ TEXT_COLOR = "black"
 # :rainbow[your_text]
 
 # Change 'sans-serif' to any font from Microsoft Word (e.g., 'Calibri', 'Arial', 'Georgia')
-FONT_FAMILY = "sans-serif"  
+FONT_FAMILY = "Georgia"  
 
 STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
 
