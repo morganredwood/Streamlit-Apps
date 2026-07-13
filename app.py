@@ -68,6 +68,9 @@ if "mode" not in st.session_state:
 if "show_delete_dropdown" not in st.session_state:
     st.session_state.show_delete_dropdown = False
 
+if "show_move_dropdowns" not in st.session_state:
+    st.session_state.show_move_dropdowns = False
+
 if "confirm_delete_list" not in st.session_state:
     st.session_state.confirm_delete_list = False
 
@@ -111,31 +114,38 @@ if st.session_state.mode == "adding":
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
 
     with right_col:
-        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {"Georgia"};'>Build Your List</h2>")
+        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {'Georgia'};'>Build Your List</h2>")
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
-            st.html(f"<div style='color: {"green"}; font-family: {"Georgia"};'>Enter a task you would like to add:</div>")
-# STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"            
-# st.html(f"<h1 style='text-align: center; color: blue; font-family: {FONT_FAMILY};'>...</h1>")
+            st.html(f"<div style='color: {'green'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>")
             task_text = st.text_input(label="Task Input", label_visibility="collapsed")
             
-            st.html(f"<div style='color: {"gray"}; font-family: {"Georgia"};'>What must be completed first? (Optional)</div>")
+            st.html(f"<div style='color: {'gray'}; font-family: {'Georgia'};'>What must be completed first? (Optional)</div>")
             prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
-            btn_col1, btn_col2, btn_col3 = st.columns(3)
+            # Updated into a 4-column row to fit the new "Move Task" button cleanly
+            btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
             
             with btn_col1:
                 submit_task = st.form_submit_button("Add Task")
 
             with btn_col2:
-                delete_task_click = st.form_submit_button("Delete Task")
-                if delete_task_click:
-                    st.session_state.show_delete_dropdown = True
+                move_task_click = st.form_submit_button("Move Task")
+                if move_task_click:
+                    st.session_state.show_move_dropdowns = True
+                    st.session_state.show_delete_dropdown = False
                     st.session_state.force_expand_list = True
 
             with btn_col3:
-                black_btn_label = "Yes, Everything" if st.session_state.confirm_delete_list else "Delete List"
+                delete_task_click = st.form_submit_button("Delete Task")
+                if delete_task_click:
+                    st.session_state.show_delete_dropdown = True
+                    st.session_state.show_move_dropdowns = False
+                    st.session_state.force_expand_list = True
+
+            with btn_col4:
+                black_btn_label = "Yes, All" if st.session_state.confirm_delete_list else "Delete List"
                 delete_list_click = st.form_submit_button(black_btn_label)
                 if delete_list_click:
                     if not st.session_state.confirm_delete_list:
@@ -146,6 +156,7 @@ if st.session_state.mode == "adding":
                         st.session_state.current_index = 0
                         st.session_state.confirm_delete_list = False
                         st.session_state.show_delete_dropdown = False
+                        st.session_state.show_move_dropdowns = False
                         save_tasks_to_file()
                         st.rerun()
 
@@ -160,6 +171,7 @@ if st.session_state.mode == "adding":
                         st.session_state.tasks.append(task_data)
                         save_tasks_to_file()
                         st.session_state.show_delete_dropdown = False
+                        st.session_state.show_move_dropdowns = False
                         st.rerun()
                     else:
                         st.sidebar.error(f"You have reached the task limit of {LIMIT}!")
@@ -180,8 +192,41 @@ if st.session_state.mode == "adding":
             if st.button("Go Back", key="go_back_btn"):
                 st.session_state.confirm_delete_list = False
                 st.session_state.show_delete_dropdown = False
+                st.session_state.show_move_dropdowns = False
                 st.rerun()
             st.html("<script>document.getElementById('root').querySelector('button:has(div:contains(\"Go Back\"))').classList.add('giant-goback-btn');</script>")
+
+        # --- NEW CODE BLOCK: MOVE TASK DROPDOWNS ---
+        if st.session_state.show_move_dropdowns and len(st.session_state.tasks) > 1:
+            st.markdown("---")
+            st.html(f"{STYLE_WRAPPER}<b>Rearrange Task Order:</b></div>")
+            
+            move_col1, move_col2 = st.columns(2)
+            task_numbers = [str(i) for i in range(1, len(st.session_state.tasks) + 1)]
+            
+            with move_col1:
+                st.html(f"{STYLE_WRAPPER}Move task number:</div>")
+                from_num = st.selectbox(label="From Position", options=["Choose..."] + task_numbers, key="move_from_drop", label_visibility="collapsed")
+                
+            with move_col2:
+                st.html(f"{STYLE_WRAPPER}To new position:</div>")
+                to_num = st.selectbox(label="To Position", options=["Choose..."] + task_numbers, key="move_to_drop", label_visibility="collapsed")
+            
+            if from_num != "Choose..." and to_num != "Choose...":
+                if from_num != to_num:
+                    from_idx = int(from_num) - 1
+                    to_idx = int(to_num) - 1
+                    
+                    # Pop the task out of the list and slide it into its new index position
+                    moved_task = st.session_state.tasks.pop(from_idx)
+                    st.session_state.tasks.insert(to_idx, moved_task)
+                    
+                    save_tasks_to_file()
+                    st.session_state.show_move_dropdowns = False
+                    st.rerun()
+        elif st.session_state.show_move_dropdowns and len(st.session_state.tasks) <= 1:
+            st.sidebar.warning("You need at least 2 tasks in your list to rearrange them!")
+            st.session_state.show_move_dropdowns = False
 
         if st.session_state.show_delete_dropdown and len(st.session_state.tasks) > 0:
             st.html(f"{STYLE_WRAPPER}Select task number to remove permanently:</div>")
@@ -217,7 +262,7 @@ elif st.session_state.mode == "working":
 
         current_task = st.session_state.tasks[st.session_state.current_index]
         
-        st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {"Georgia"};'>{current_task['name']}</h1>")
+        st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {'Georgia'};'>{current_task['name']}</h1>")
         
         if current_task['prereq']:
             st.warning(f"⚠️ **Prerequisite reminder:** You need to finish this task first: **{current_task['prereq']}**")
@@ -253,7 +298,7 @@ elif st.session_state.mode == "working":
         if st.session_state.affirmation:
             st.write("")
             st.write("")
-            st.html(f"<div style='text-align: center; font-size: 28px; font-weight: 400; color: {"orange"}; font-family: {"Comic Sans MS"};'>{st.session_state.affirmation}</div>")
+            st.html(f"<div style='text-align: center; font-size: 28px; font-weight: 400; color: {'orange'}; font-family: {'Comic Sans MS'};'>{st.session_state.affirmation}</div>")
 
     else:
         st.balloons()
@@ -266,3 +311,4 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_file()
             st.rerun()
+            
