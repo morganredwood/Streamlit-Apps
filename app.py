@@ -112,8 +112,10 @@ if st.session_state.mode == "adding":
     left_col, right_col = st.columns([1, 1.5], gap="large")
 
     with left_col:
-        is_expanded = st.session_state.force_expand_list
-        with st.expander("📋 View / Hide Full Task List", expanded=is_expanded):
+        st.html(f"{STYLE_WRAPPER}<b>📋 Full Task List</b></div><br>")
+        
+        # This native container creates a perfect, scroll-locked viewing window
+        with st.container(height=400):
             if len(st.session_state.tasks) > 0:
                 for i, t in enumerate(st.session_state.tasks, 1):
                     if t["prereq"]:
@@ -125,7 +127,6 @@ if st.session_state.mode == "adding":
 
         if st.session_state.confirm_delete_list:
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
-
     with right_col:
         st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {'Georgia'};'>Build Your List</h2>")
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
