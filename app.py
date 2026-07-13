@@ -131,7 +131,7 @@ if st.session_state.mode == "adding":
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
-            st.html(f"<div style='color: {'green'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>")
+            st.html(f"<div style='color: {'purple'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>")
             task_text = st.text_input(label="Task Input", label_visibility="collapsed")
             
             st.html(f"<div style='color: {'gray'}; font-family: {'Georgia'};'>What must be completed first? (Optional)</div>")
