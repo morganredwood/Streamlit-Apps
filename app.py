@@ -128,17 +128,17 @@ if st.session_state.mode == "adding":
             btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
             
             with btn_col1:
-                submit_task = st.form_submit_button("{'background-color': 'lightgreen'}", label="Add Task")
+                submit_task = st.form_submit_button("Add Task")
 
             with btn_col2:
-                move_task_click = st.form_submit_button("{'background-color': 'lightblue'}", label="Move Task")
+                move_task_click = st.form_submit_button("Move Task")
                 if move_task_click:
                     st.session_state.show_move_dropdowns = True
                     st.session_state.show_delete_dropdown = False
                     st.session_state.force_expand_list = True
 
             with btn_col3:
-                delete_task_click = st.form_submit_button("{'background-color': 'lightcoral'}", label="Delete Task")
+                delete_task_click = st.form_submit_button("Delete Task")
                 if delete_task_click:
                     st.session_state.show_delete_dropdown = True
                     st.session_state.show_move_dropdowns = False
