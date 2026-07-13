@@ -5,23 +5,43 @@ import os
 # ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION (Change your fonts and colors here!)
 # ==============================================================================
-# You can change '#0000FF' to any hex color code, or standard words like 'blue', 'green', 'purple'
 TEXT_COLOR = "black"  
-# Native Markdown Colors (Fast & Safe)
-# Streamlit supports a built-in set of named colors using the syntax :colorname[your text].
-# These are automatically calibrated to look great in both Light and Dark modes:
-# :blue[your_text]
-# :green[your_text]
-# :orange[your_text]
-# :red[your_text]
-# :violet[your_text]
-# :gray[your_text] (also spans :grey[your_text])
-# :rainbow[your_text]
-
-# Change 'sans-serif' to any font from Microsoft Word (e.g., 'Calibri', 'Arial', 'Georgia')
 FONT_FAMILY = "Georgia"  
 
 STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
+
+# 🎛️ BUTTON TEXT COLOR SWITCHES (Change individual button text colors here!)
+COLOR_ADD_TASK = "green"
+COLOR_MOVE_TASK = "blue"
+COLOR_DELETE_TASK = "red"
+COLOR_DELETE_LIST = "black"
+
+# Bulletproof CSS injection to target just these specific buttons by their text contents
+st.html(f"""
+    <style>
+    /* 1. Add Task Button */
+    div.stButton > button:has(div p:contains("Add Task")) p {{
+        color: {COLOR_ADD_TASK} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
+    /* 2. Move Task Button */
+    div.stButton > button:has(div p:contains("Move Task")) p {{
+        color: {COLOR_MOVE_TASK} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
+    /* 3. Delete Task Button */
+    div.stButton > button:has(div p:contains("Delete Task")) p {{
+        color: {COLOR_DELETE_TASK} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
+    /* 4. Delete List Button (handles both states of the button text) */
+    div.stButton > button:has(div p:contains("Delete List")) p,
+    div.stButton > button:has(div p:contains("Yes, All")) p {{
+        color: {COLOR_DELETE_LIST} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
+    </style>
+""")
 
 # 💡 QUICK REFERENCE REMINDERS:
 # To hardcode a specific color for just one element (like the active task title),
@@ -118,10 +138,10 @@ if st.session_state.mode == "adding":
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
-            st.html(f"<div style='color: {'black'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>")
+            st.html(f"<div style='color: {'green'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>")
             task_text = st.text_input(label="Task Input", label_visibility="collapsed")
             
-            st.html(f"<div style='color: {'black'}; font-family: {'Georgia'};'>What must be completed first? (Optional)</div>")
+            st.html(f"<div style='color: {'gray'}; font-family: {'Georgia'};'>What must be completed first? (Optional)</div>")
             prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
             # Updated into a 4-column row to fit the new "Move Task" button cleanly
@@ -196,7 +216,7 @@ if st.session_state.mode == "adding":
                 st.rerun()
             st.html("<script>document.getElementById('root').querySelector('button:has(div:contains(\"Go Back\"))').classList.add('giant-goback-btn');</script>")
 
-        # --- NEW CODE BLOCK: MOVE TASK DROPDOWNS ---
+        # --- MOVE TASK DROPDOWNS ---
         if st.session_state.show_move_dropdowns and len(st.session_state.tasks) > 1:
             st.markdown("---")
             st.html(f"{STYLE_WRAPPER}<b>Rearrange Task Order:</b></div>")
@@ -311,3 +331,4 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_file()
             st.rerun()
+            
