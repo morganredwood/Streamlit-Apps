@@ -115,12 +115,12 @@ if st.session_state.mode == "adding":
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
-            st.html(f"<div style='color: {"gray"}; font-family: {"Georgia"};'>Enter a task you would like to add:</div>")
+            st.html(f"<div style='color: {"green"}; font-family: {"Georgia"};'>Enter a task you would like to add:</div>")
 # STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"            
 # st.html(f"<h1 style='text-align: center; color: blue; font-family: {FONT_FAMILY};'>...</h1>")
             task_text = st.text_input(label="Task Input", label_visibility="collapsed")
             
-            st.html(f"<div style='color: {"gray"}; font-family: {"Georgia"};'>What must be completed first? (Optional)</div>")
+            st.html(f"<div style='color: {"green"}; font-family: {"Georgia"};'>What must be completed first? (Optional)</div>")
             prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
             btn_col1, btn_col2, btn_col3 = st.columns(3)
