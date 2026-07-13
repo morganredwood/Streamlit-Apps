@@ -18,34 +18,31 @@ COLOR_DELETE_TASK = "red"
 COLOR_DELETE_LIST = "black"
 
 # Bulletproof CSS injection using unique button keys
-# Bulletproof CSS injection using flexible button keys that work inside forms
+# Positional CSS injection targeting the 4 columns inside the form
 st.html(f"""
     <style>
-    /* 1. Add Task Button */
-    div[data-testid="stForm"] element-container:has(button[id$="btn_add"]) button p {{
+    /* 1. Add Task Button (Column 1) */
+    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div:nth-child(1) button p {{
         color: {COLOR_ADD_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 2. Move Task Button */
-    div[data-testid="stForm"] element-container:has(button[id$="btn_move"]) button p {{
+    /* 2. Move Task Button (Column 2) */
+    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div:nth-child(2) button p {{
         color: {COLOR_MOVE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 3. Delete Task Button */
-    div[data-testid="stForm"] element-container:has(button[id$="btn_delete_task"]) button p {{
+    /* 3. Delete Task Button (Column 3) */
+    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div:nth-child(3) button p {{
         color: {COLOR_DELETE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 4. Delete List Button */
-    div[data-testid="stForm"] element-container:has(button[id$="btn_delete_list"]) button p {{
+    /* 4. Delete List Button (Column 4) */
+    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div:nth-child(4) button p {{
         color: {COLOR_DELETE_LIST} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     </style>
 """)
-
-# ==============================================================================
-
 # --- 1. BULLETPROOF LOCAL FILE STORAGE SETUP ---
 BACKUP_FILE = "task_backup.json"
 
