@@ -121,7 +121,7 @@ if st.session_state.mode == "adding":
             st.html(f"<div style='color: {'black'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>")
             task_text = st.text_input(label="Task Input", label_visibility="collapsed")
             
-            st.html(f"<div style='color: {'gray'}; font-family: {'Georgia'};'>What must be completed first? (Optional)</div>")
+            st.html(f"<div style='color: {'black'}; font-family: {'Georgia'};'>What must be completed first? (Optional)</div>")
             prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
             # Updated into a 4-column row to fit the new "Move Task" button cleanly
