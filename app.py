@@ -11,38 +11,37 @@ FONT_FAMILY = "Georgia"
 STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
 
 # 🎛️ BUTTON TEXT COLOR SWITCHES (Change individual button text colors here!)
+# 🎛️ BUTTON TEXT COLOR SWITCHES (Change individual button text colors here!)
 COLOR_ADD_TASK = "green"
 COLOR_MOVE_TASK = "blue"
 COLOR_DELETE_TASK = "red"
 COLOR_DELETE_LIST = "black"
 
-# Bulletproof CSS injection to target just these specific buttons by their text contents
+# Bulletproof CSS injection using unique button keys
 st.html(f"""
     <style>
     /* 1. Add Task Button */
-    div.stButton > button:has(div p:contains("Add Task")) p {{
+    div[data-testid="stForm"] element-container:has(#btn_add) button p {{
         color: {COLOR_ADD_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     /* 2. Move Task Button */
-    div.stButton > button:has(div p:contains("Move Task")) p {{
+    div[data-testid="stForm"] element-container:has(#btn_move) button p {{
         color: {COLOR_MOVE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     /* 3. Delete Task Button */
-    div.stButton > button:has(div p:contains("Delete Task")) p {{
+    div[data-testid="stForm"] element-container:has(#btn_delete_task) button p {{
         color: {COLOR_DELETE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 4. Delete List Button (handles both states of the button text) */
-    div.stButton > button:has(div p:contains("Delete List")) p,
-    div.stButton > button:has(div p:contains("Yes, All")) p {{
+    /* 4. Delete List Button */
+    div[data-testid="stForm"] element-container:has(#btn_delete_list) button p {{
         color: {COLOR_DELETE_LIST} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     </style>
 """)
-
 # 💡 QUICK REFERENCE REMINDERS:
 # To hardcode a specific color for just one element (like the active task title),
 # swap out {TEXT_COLOR} for a specific color name or hex code like this:
@@ -145,20 +144,21 @@ if st.session_state.mode == "adding":
             prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
             # Updated into a 4-column row to fit the new "Move Task" button cleanly
+            # Updated into a 4-column row with keys assigned for perfect color targeting
             btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
             
             with btn_col1:
-                submit_task = st.form_submit_button("Add Task")
+                submit_task = st.form_submit_button("Add Task", key="btn_add")
 
             with btn_col2:
-                move_task_click = st.form_submit_button("Move Task")
+                move_task_click = st.form_submit_button("Move Task", key="btn_move")
                 if move_task_click:
                     st.session_state.show_move_dropdowns = True
                     st.session_state.show_delete_dropdown = False
                     st.session_state.force_expand_list = True
 
             with btn_col3:
-                delete_task_click = st.form_submit_button("Delete Task")
+                delete_task_click = st.form_submit_button("Delete Task", key="btn_delete_task")
                 if delete_task_click:
                     st.session_state.show_delete_dropdown = True
                     st.session_state.show_move_dropdowns = False
@@ -166,7 +166,7 @@ if st.session_state.mode == "adding":
 
             with btn_col4:
                 black_btn_label = "Yes, All" if st.session_state.confirm_delete_list else "Delete List"
-                delete_list_click = st.form_submit_button(black_btn_label)
+                delete_list_click = st.form_submit_button(black_btn_label, key="btn_delete_list")
                 if delete_list_click:
                     if not st.session_state.confirm_delete_list:
                         st.session_state.confirm_delete_list = True
@@ -331,4 +331,3 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_file()
             st.rerun()
-            
