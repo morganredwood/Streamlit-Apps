@@ -118,7 +118,7 @@ if st.session_state.mode == "adding":
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
-            st.html(f"<div style='color: {'green'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>")
+            st.html(f"<div style='color: {'black'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>")
             task_text = st.text_input(label="Task Input", label_visibility="collapsed")
             
             st.html(f"<div style='color: {'gray'}; font-family: {'Georgia'};'>What must be completed first? (Optional)</div>")
@@ -128,7 +128,7 @@ if st.session_state.mode == "adding":
             btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
             
             with btn_col1:
-                submit_task = st.form_submit_button("Add Task")
+                submit_task = st.form_submit_button({"background-color": "lightgreen"}, label="Add Task")
 
             with btn_col2:
                 move_task_click = st.form_submit_button("Move Task")
@@ -138,7 +138,7 @@ if st.session_state.mode == "adding":
                     st.session_state.force_expand_list = True
 
             with btn_col3:
-                delete_task_click = st.form_submit_button("Delete Task")
+                delete_task_click = st.form_submit_button({"background-color": "lightcoral"}, label="Delete Task")
                 if delete_task_click:
                     st.session_state.show_delete_dropdown = True
                     st.session_state.show_move_dropdowns = False
@@ -311,4 +311,3 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_file()
             st.rerun()
-            
