@@ -18,34 +18,31 @@ COLOR_DELETE_TASK = "red"
 COLOR_DELETE_LIST = "black"
 
 # Bulletproof CSS injection using unique button keys
+# Bulletproof CSS injection using flexible button keys that work inside forms
 st.html(f"""
     <style>
     /* 1. Add Task Button */
-    div[data-testid="stForm"] element-container:has(#btn_add) button p {{
+    div[data-testid="stForm"] element-container:has(button[id$="btn_add"]) button p {{
         color: {COLOR_ADD_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     /* 2. Move Task Button */
-    div[data-testid="stForm"] element-container:has(#btn_move) button p {{
+    div[data-testid="stForm"] element-container:has(button[id$="btn_move"]) button p {{
         color: {COLOR_MOVE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     /* 3. Delete Task Button */
-    div[data-testid="stForm"] element-container:has(#btn_delete_task) button p {{
+    div[data-testid="stForm"] element-container:has(button[id$="btn_delete_task"]) button p {{
         color: {COLOR_DELETE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     /* 4. Delete List Button */
-    div[data-testid="stForm"] element-container:has(#btn_delete_list) button p {{
+    div[data-testid="stForm"] element-container:has(button[id$="btn_delete_list"]) button p {{
         color: {COLOR_DELETE_LIST} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     </style>
 """)
-# 💡 QUICK REFERENCE REMINDERS:
-# To hardcode a specific color for just one element (like the active task title),
-# swap out {TEXT_COLOR} for a specific color name or hex code like this:
-# st.html(f"<h1 style='text-align: center; color: blue; font-family: {FONT_FAMILY};'>...</h1>")
 
 # ==============================================================================
 
