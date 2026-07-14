@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import random
-import os
+from streamlit_cookies_controller import CookieController
 # ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION (Change your fonts and colors here!)
 # ==============================================================================
@@ -53,31 +53,39 @@ st.html(f"""
 """)
 # ==============================================================================
 
-# --- 1. BULLETPROOF LOCAL FILE STORAGE SETUP ---
-BACKUP_FILE = "task_backup.json"
 
-def load_tasks_from_file():
-    """Instantly reads the JSON backup file on local disk."""
-    if os.path.exists(BACKUP_FILE):
+# ==============================================================================
+# 🍪 BROWSER COOKIE CONFIGURATION (Ensures private, permanent user lists)
+# ==============================================================================
+# Initialize the browser cookie controller
+controller = CookieController()
+
+def load_tasks_from_browser():
+    """Reads the private task list stored in the visitor's browser cookies."""
+    saved_cookie = controller.get('user_task_list')
+    if saved_cookie:
         try:
-            with open(BACKUP_FILE, "r") as f:
-                return json.load(f)
+            # Decode the stored JSON string back into a Python list
+            return json.loads(saved_cookie)
         except Exception:
             return []
     return []
 
-def save_tasks_to_file():
-    """Instantly saves the current list to local disk."""
+def save_tasks_to_browser():
+    """Saves the current list directly into the visitor's browser cookies."""
     try:
-        with open(BACKUP_FILE, "w") as f:
-            json.dump(st.session_state.tasks, f, indent=4)
+        # Convert the task list to a text string and store it for up to 30 days
+        json_str = json.dumps(st.session_state.tasks)
+        controller.set('user_task_list', json_str, max_age=2592000)
     except Exception as e:
-        st.sidebar.error(f"Save Error: {e}")
+        st.sidebar.error(f"Storage Error: {e}")
 
-# Initialize tasks instantly from disk on page load
+# Read and initialize the private list on the very first page load
 if "tasks" not in st.session_state:
-    st.session_state.tasks = load_tasks_from_file()
-
+    # A tiny pause lets the browser hand over the cookie data smoothly
+    st.write("") 
+    st.session_state.tasks = load_tasks_from_browser()
+# ==============================================================================
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
