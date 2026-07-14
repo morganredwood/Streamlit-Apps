@@ -93,7 +93,7 @@ if "force_expand_list" not in st.session_state:
 if "affirmation" not in st.session_state:
     st.session_state.affirmation = None
 
-LIMIT = 100
+LIMIT = 500
 
 AFFIRMATIONS = [
     "✨ Fantastic job getting that done!",
