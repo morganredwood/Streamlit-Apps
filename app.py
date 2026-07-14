@@ -10,37 +10,38 @@ FONT_FAMILY = "Georgia"
 
 STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
 
-# 🎛️ BUTTON TEXT COLOR SWITCHES (Change individual button text colors here!)
+# 🎛️ BUTTON TEXT COLOR SWITCHES
 COLOR_ADD_TASK = "green"
 COLOR_MOVE_TASK = "blue"
 COLOR_DELETE_TASK = "red"
 COLOR_DELETE_LIST = "black"
 
-# Bulletproof positional CSS injection targeting column contents at any depth inside the form
+# Bulletproof targeting using Streamlit's element-key attributes
 st.html(f"""
     <style>
-    /* 1. Add Task Button (Column 1) */
-    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(1) button p {{
+    /* 1. Add Task Button */
+    div[element-to-capture="btn_add"] button p {{
         color: {COLOR_ADD_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 2. Move Task Button (Column 2) */
-    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) button p {{
+    /* 2. Move Task Button */
+    div[element-to-capture="btn_move"] button p {{
         color: {COLOR_MOVE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 3. Delete Task Button (Column 3) */
-    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) button p {{
+    /* 3. Delete Task Button */
+    div[element-to-capture="btn_delete_task"] button p {{
         color: {COLOR_DELETE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 4. Delete List Button (Column 4) */
-    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(4) button p {{
+    /* 4. Delete List Button */
+    div[element-to-capture="btn_delete_list"] button p {{
         color: {COLOR_DELETE_LIST} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     </style>
 """)
+# ==============================================================================
 # ==============================================================================
 
 # --- 1. BULLETPROOF LOCAL FILE STORAGE SETUP ---
