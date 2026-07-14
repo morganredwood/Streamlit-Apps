@@ -59,7 +59,7 @@ st.html(f"""
 
 
 # ==============================================================================
-# 🌐 BROWSER-BASED HIGH-CAPACITY STORAGE BRIDGE (IndexedDB / LocalStorage)
+# 🌐 BROWSER-BASED HIGH-CAPACITY STORAGE BRIDGE
 # ==============================================================================
 # Initialize task state cleanly
 if "tasks" not in st.session_state:
@@ -70,58 +70,6 @@ if "storage_initialized" not in st.session_state:
 def save_tasks_to_browser():
     """Triggers the JavaScript side to save the current task state to browser storage."""
     st.session_state.sync_trigger = True
-
-# Invisible bidirectional storage bridge component
-def browser_storage_bridge():
-    js_code = f"""
-    <script>
-    const STORAGE_KEY = "executive_function_tasks";
-    
-    // Listen for messages or data readiness from Streamlit
-    function sendDataToStreamlit(data) {{
-        window.parent.postMessage({{
-            type: "streamlit:setComponentValue",
-            value: data
-        }}, "*");
-    }}
-
-    // Read initial data from browser storage on startup
-    window.addEventListener("DOMContentLoaded", () => {{
-        try {{
-            const storedData = localStorage.getItem(STORAGE_KEY);
-            if (storedData) {{
-                sendDataToStreamlit(JSON.parse(storedData));
-            }} else {{
-                sendDataToStreamlit([]);
-            }}
-        }} catch (e) {{
-            console.error("Storage read failed:", e);
-            sendDataToStreamlit([]);
-        }}
-    }});
-
-    // Handle incoming data updates to write to storage
-    window.parent.addEventListener("message", (event) => {{
-        if (event.data && event.data.type === "streamlit:render") {{
-            const args = event.data.args;
-            if (args && args.tasks_to_save && args.should_save) {{
-                try {{
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(args.tasks_to_save));
-                }} catch (e) {{
-                    console.error("Storage write failed:", e);
-                }}
-            }}
-        }}
-    }});
-    </script>
-    """
-    # This component captures incoming browser storage data and feeds it back into Python securely
-    return components.html(
-        js_code, 
-        height=0, 
-        width=0, 
-        scrolling=false
-    )
 
 # Run the storage sync engine seamlessly in the background
 should_save = st.session_state.get("sync_trigger", False)
@@ -178,7 +126,8 @@ if "force_expand_list" not in st.session_state:
 if "affirmation" not in st.session_state:
     st.session_state.affirmation = None
 
-LIMIT = 100
+# Safe high limit supported by native browser local storage
+LIMIT = 500
 
 AFFIRMATIONS = [
     "✨ Fantastic job getting that done!",
@@ -278,64 +227,59 @@ if st.session_state.mode == "adding":
                 else:
                     st.sidebar.warning("Task name cannot be blank!")
 
-        # --- MOVE TASK DROPDOWNS ---
+        # --- MOVE TASK SECTION (Optimized for High Capacity) ---
         if st.session_state.show_move_dropdowns and len(st.session_state.tasks) > 1:
             st.markdown("---")
             st.html(f"{STYLE_WRAPPER}<b>Rearrange Task Order:</b></div>")
             
             move_col1, move_col2, move_col3 = st.columns([1.5, 1.5, 1])
-            task_numbers = [str(i) for i in range(1, len(st.session_state.tasks) + 1)]
+            max_tasks = len(st.session_state.tasks)
             
             with move_col1:
                 st.html(f"{STYLE_WRAPPER}Move task number:</div>")
-                from_num = st.selectbox(label="From Position", options=["Choose..."] + task_numbers, key="move_from_drop", label_visibility="collapsed")
+                from_num = st.number_input(label="From Position", min_value=1, max_value=max_tasks, step=1, key="move_from_num", label_visibility="collapsed")
                 
             with move_col2:
                 st.html(f"{STYLE_WRAPPER}To new position:</div>")
-                to_num = st.selectbox(label="To Position", options=["Choose..."] + task_numbers, key="move_to_drop", label_visibility="collapsed")
+                to_num = st.number_input(label="To Position", min_value=1, max_value=max_tasks, step=1, key="move_to_num", label_visibility="collapsed")
             
             with move_col3:
                 st.html("<div style='margin-top: 24px;'></div>") 
                 if st.button("Confirm Move", key="btn_confirm_move", use_container_width=True):
-                    if from_num != "Choose..." and to_num != "Choose...":
-                        if from_num != to_num:
-                            from_idx = int(from_num) - 1
-                            to_idx = int(to_num) - 1
-                            
-                            moved_task = st.session_state.tasks.pop(from_idx)
-                            st.session_state.tasks.insert(to_idx, moved_task)
-                            
-                            save_tasks_to_browser()
-                            st.session_state.show_move_dropdowns = False
-                            st.rerun()
-                    else:
-                        st.sidebar.warning("Please select both positions first!")
+                    if from_num != to_num:
+                        from_idx = int(from_num) - 1
+                        to_idx = int(to_num) - 1
+                        
+                        moved_task = st.session_state.tasks.pop(from_idx)
+                        st.session_state.tasks.insert(to_idx, moved_task)
+                        
+                        save_tasks_to_browser()
+                        st.session_state.show_move_dropdowns = False
+                        st.rerun()
                         
         elif st.session_state.show_move_dropdowns and len(st.session_state.tasks) <= 1:
             st.sidebar.warning("You need at least 2 tasks in your list to rearrange them!")
             st.session_state.show_move_dropdowns = False
 
-        # --- DELETE SINGLE TASK DROPDOWN ---
+        # --- DELETE SINGLE TASK SECTION (Optimized for High Capacity) ---
         if st.session_state.show_delete_dropdown and len(st.session_state.tasks) > 0:
             st.markdown("---")
             st.html(f"{STYLE_WRAPPER}Select task number to remove permanently:</div>")
             
             del_col1, del_col2 = st.columns([3, 1])
-            task_numbers = [str(i) for i in range(1, len(st.session_state.tasks) + 1)]
+            max_tasks = len(st.session_state.tasks)
             
             with del_col1:
-                selected_num = st.selectbox(label="Select Task Dropdown", options=["None"] + task_numbers, key="delete_task_drop", label_visibility="collapsed")
+                selected_num = st.number_input(label="Select Task Number", min_value=1, max_value=max_tasks, step=1, key="delete_task_num", label_visibility="collapsed")
             
             with del_col2:
+                st.html("<div style='margin-top: 5px;'></div>") 
                 if st.button("Confirm Delete", key="btn_confirm_delete", use_container_width=True):
-                    if selected_num != "None":
-                        del_idx = int(selected_num) - 1
-                        del st.session_state.tasks[del_idx]
-                        save_tasks_to_browser()
-                        st.session_state.show_delete_dropdown = False
-                        st.rerun()
-                    else:
-                        st.sidebar.warning("Please select a task number to delete!")
+                    del_idx = int(selected_num) - 1
+                    del st.session_state.tasks[del_idx]
+                    save_tasks_to_browser()
+                    st.session_state.show_delete_dropdown = False
+                    st.rerun()
         
         if len(st.session_state.tasks) > 0:
             st.html("<div style='display: flex; justify-content: center; margin-top: 25px;'>")
