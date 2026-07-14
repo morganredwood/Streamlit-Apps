@@ -192,7 +192,7 @@ if st.session_state.mode == "adding":
                         st.session_state.confirm_delete_list = False
                         st.session_state.show_delete_dropdown = False
                         st.session_state.show_move_dropdowns = False
-                        save_tasks_to_file()
+                        save_tasks_to_browser()
                         st.rerun()
 
             if submit_task:
@@ -204,7 +204,7 @@ if st.session_state.mode == "adding":
                             "prereq": prereq_text.strip() if prereq_text.strip() else None
                         }
                         st.session_state.tasks.append(task_data)
-                        save_tasks_to_file()
+                        save_tasks_to_browser()
                         st.session_state.show_delete_dropdown = False
                         st.session_state.show_move_dropdowns = False
                         st.rerun()
@@ -259,7 +259,7 @@ if st.session_state.mode == "adding":
                             moved_task = st.session_state.tasks.pop(from_idx)
                             st.session_state.tasks.insert(to_idx, moved_task)
                             
-                            save_tasks_to_file()
+                            save_tasks_to_browser()
                             st.session_state.show_move_dropdowns = False
                             st.rerun()
                     else:
@@ -285,7 +285,7 @@ if st.session_state.mode == "adding":
                     if selected_num != "None":
                         del_idx = int(selected_num) - 1
                         del st.session_state.tasks[del_idx]
-                        save_tasks_to_file()
+                        save_tasks_to_browser()
                         st.session_state.show_delete_dropdown = False
                         st.rerun()
                     else:
@@ -324,7 +324,7 @@ elif st.session_state.mode == "working":
         with col1:
             if st.button("👍 Yes, I completed it!", use_container_width=True):
                 del st.session_state.tasks[st.session_state.current_index]
-                save_tasks_to_file()
+                save_tasks_to_browser()
                 st.session_state.affirmation = random.choice(AFFIRMATIONS)
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
@@ -358,6 +358,6 @@ elif st.session_state.mode == "working":
             st.session_state.current_index = 0
             st.session_state.mode = "adding"
             st.session_state.affirmation = None
-            save_tasks_to_file()
+            save_tasks_to_browser()
             st.rerun()
             
