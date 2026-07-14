@@ -39,6 +39,16 @@ st.html(f"""
         color: {COLOR_DELETE_LIST} !important;
         font-family: {FONT_FAMILY} !important;
     }}
+    /* 5. Confirm Move Action Button */
+    div[class*="st-key-btn_confirm_move"] button p {{
+        color: {COLOR_MOVE_TASK} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
+    /* 6. Confirm Delete Action Button */
+    div[class*="st-key-btn_confirm_delete"] button p {{
+        color: {COLOR_DELETE_TASK} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
     </style>
 """)
 # ==============================================================================
@@ -214,7 +224,7 @@ if st.session_state.mode == "adding":
             st.markdown("---")
             st.html(f"{STYLE_WRAPPER}<b>Rearrange Task Order:</b></div>")
             
-            move_col1, move_col2 = st.columns(2)
+            move_col1, move_col2, move_col3 = st.columns([1.5, 1.5, 1])
             task_numbers = [str(i) for i in range(1, len(st.session_state.tasks) + 1)]
             
             with move_col1:
@@ -225,35 +235,49 @@ if st.session_state.mode == "adding":
                 st.html(f"{STYLE_WRAPPER}To new position:</div>")
                 to_num = st.selectbox(label="To Position", options=["Choose..."] + task_numbers, key="move_to_drop", label_visibility="collapsed")
             
-            if from_num != "Choose..." and to_num != "Choose...":
-                if from_num != to_num:
-                    from_idx = int(from_num) - 1
-                    to_idx = int(to_num) - 1
-                    
-                    # Pop the task out of the list and slide it into its new index position
-                    moved_task = st.session_state.tasks.pop(from_idx)
-                    st.session_state.tasks.insert(to_idx, moved_task)
-                    
-                    save_tasks_to_file()
-                    st.session_state.show_move_dropdowns = False
-                    st.rerun()
+            with move_col3:
+                st.html("<div style='margin-top: 24px;'></div>") # Aligns button vertically with dropdowns
+                if st.button("Confirm Move", key="btn_confirm_move", use_container_width=True):
+                    if from_num != "Choose..." and to_num != "Choose...":
+                        if from_num != to_num:
+                            from_idx = int(from_num) - 1
+                            to_idx = int(to_num) - 1
+                            
+                            # Pop the task out of the list and slide it into its new index position
+                            moved_task = st.session_state.tasks.pop(from_idx)
+                            st.session_state.tasks.insert(to_idx, moved_task)
+                            
+                            save_tasks_to_file()
+                            st.session_state.show_move_dropdowns = False
+                            st.rerun()
+                    else:
+                        st.sidebar.warning("Please select both positions first!")
+                        
         elif st.session_state.show_move_dropdowns and len(st.session_state.tasks) <= 1:
             st.sidebar.warning("You need at least 2 tasks in your list to rearrange them!")
             st.session_state.show_move_dropdowns = False
 
+        # --- DELETE SINGLE TASK DROPDOWN ---
         if st.session_state.show_delete_dropdown and len(st.session_state.tasks) > 0:
+            st.markdown("---")
             st.html(f"{STYLE_WRAPPER}Select task number to remove permanently:</div>")
-            task_numbers = [str(i) for i in range(1, len(st.session_state.tasks) + 1)]
-            selected_num = st.selectbox(label="Select Task Dropdown", options=["None"] + task_numbers, label_visibility="collapsed")
             
-            if selected_num != "None":
-                del_idx = int(selected_num) - 1
-                del st.session_state.tasks[del_idx]
-                save_tasks_to_file()
-                st.session_state.show_delete_dropdown = False
-                st.rerun()
-
-        st.markdown("---")
+            del_col1, del_col2 = st.columns([3, 1])
+            task_numbers = [str(i) for i in range(1, len(st.session_state.tasks) + 1)]
+            
+            with del_col1:
+                selected_num = st.selectbox(label="Select Task Dropdown", options=["None"] + task_numbers, key="delete_task_drop", label_visibility="collapsed")
+            
+            with del_col2:
+                if st.button("Confirm Delete", key="btn_confirm_delete", use_container_width=True):
+                    if selected_num != "None":
+                        del_idx = int(selected_num) - 1
+                        del st.session_state.tasks[del_idx]
+                        save_tasks_to_file()
+                        st.session_state.show_delete_dropdown = False
+                        st.rerun()
+                    else:
+                        st.sidebar.warning("Please select a task number to delete!")
         
         if len(st.session_state.tasks) > 0:
             st.html("<div style='display: flex; justify-content: center; margin-top: 25px;'>")
