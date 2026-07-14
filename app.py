@@ -59,45 +59,74 @@ st.html(f"""
 
 
 # ==============================================================================
-# 🌐 BROWSER-BASED HIGH-CAPACITY STORAGE BRIDGE
+# 🌐 BROWSER-BASED HIGH-CAPACITY STORAGE BRIDGE (WIPE-PROOF)
 # ==============================================================================
-# Initialize task state cleanly
+# 1. Initialize our session states safely
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
 if "storage_initialized" not in st.session_state:
     st.session_state.storage_initialized = False
+if "sync_trigger" not in st.session_state:
+    st.session_state.sync_trigger = False
 
 def save_tasks_to_browser():
     """Triggers the JavaScript side to save the current task state to browser storage."""
-    st.session_state.sync_trigger = True
+    # Crucial safety check: Never write to storage if we haven't successfully loaded yet!
+    if st.session_state.storage_initialized:
+        st.session_state.sync_trigger = True
 
-# Run the storage sync engine seamlessly in the background
-should_save = st.session_state.get("sync_trigger", False)
+# 2. Inject the background bridge
+# This script reads from localStorage ONCE on startup. If it finds data, it sends it back.
+# If it finds nothing, it declares initialization complete so we can start writing.
 browser_data = components.html(
     f"""
     <script>
     const STORAGE_KEY = "executive_function_tasks";
-    // Check if parent wants to save data
-    if ({json.dumps(should_save)}) {{
+    
+    // Send data from browser back to Streamlit
+    function sendToStreamlit(val) {{
+        window.parent.postMessage({{
+            type: "streamlit:setComponentValue",
+            value: val
+        }}, "*");
+    }}
+
+    // Check if we have an active save command from Python
+    const shouldSave = {json.dumps(st.session_state.sync_trigger)};
+    const initialized = {json.dumps(st.session_state.storage_initialized)};
+
+    if (shouldSave && initialized) {{
+        // Save Python's current state to the browser
         localStorage.setItem(STORAGE_KEY, JSON.stringify({json.dumps(st.session_state.tasks)}));
     }}
-    // Fetch current state back to Streamlit
-    const data = localStorage.getItem(STORAGE_KEY);
-    window.parent.postMessage({{
-        type: "streamlit:setComponentValue",
-        value: data ? JSON.parse(data) : null
-    }}, "*");
+
+    // Read the current local storage state to feed back into Python
+    try {{
+        const data = localStorage.getItem(STORAGE_KEY);
+        if (data) {{
+            sendToStreamlit({{ "status": "loaded", "data": JSON.parse(data) }});
+        }} else {{
+            sendToStreamlit({{ "status": "empty", "data": [] }});
+        }}
+    }} catch (e) {{
+        sendToStreamlit({{ "status": "error", "data": [] }});
+    }}
     </script>
     """,
     height=0,
 )
 
-# Parse initial payload only once to prevent wipe loops
+# 3. Process the bridge payload safely
 if browser_data is not None and not st.session_state.storage_initialized:
-    st.session_state.tasks = browser_data if isinstance(browser_data, list) else []
-    st.session_state.storage_initialized = True
+    # Only load the data if the bridge successfully returned our startup payload
+    payload = browser_data
+    if isinstance(payload, dict) and "status" in payload:
+        if payload["status"] in ["loaded", "empty"]:
+            st.session_state.tasks = payload["data"]
+            st.session_state.storage_initialized = True
+            st.rerun()  # Rerun once to make sure the UI displays the loaded tasks immediately
 
-# Reset the write trigger flag safely
+# Reset the write trigger flag safely for the next interaction
 st.session_state.sync_trigger = False
 # ==============================================================================
 
@@ -227,7 +256,7 @@ if st.session_state.mode == "adding":
                 else:
                     st.sidebar.warning("Task name cannot be blank!")
 
-        # --- MOVE TASK SECTION (Optimized for High Capacity) ---
+        # --- MOVE TASK SECTION ---
         if st.session_state.show_move_dropdowns and len(st.session_state.tasks) > 1:
             st.markdown("---")
             st.html(f"{STYLE_WRAPPER}<b>Rearrange Task Order:</b></div>")
@@ -261,7 +290,7 @@ if st.session_state.mode == "adding":
             st.sidebar.warning("You need at least 2 tasks in your list to rearrange them!")
             st.session_state.show_move_dropdowns = False
 
-        # --- DELETE SINGLE TASK SECTION (Optimized for High Capacity) ---
+        # --- DELETE SINGLE TASK SECTION ---
         if st.session_state.show_delete_dropdown and len(st.session_state.tasks) > 0:
             st.markdown("---")
             st.html(f"{STYLE_WRAPPER}Select task number to remove permanently:</div>")
