@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import random
 from streamlit_cookies_controller import CookieController
+#
 # ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION (Change your fonts and colors here!)
 # ==============================================================================
