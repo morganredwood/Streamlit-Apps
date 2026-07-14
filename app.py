@@ -117,19 +117,23 @@ AFFIRMATIONS = [
 ]
 
 # --- 2. MODE: ADDING TASKS ---
+# --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
     
     left_col, right_col = st.columns([1, 1.5], gap="large")
 
     with left_col:
-        is_expanded = st.session_state.force_expand_list
-        with st.expander("📋 View / Hide Full Task List", expanded=is_expanded):
+        st.html(f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List</h3>")
+        
+        # We use a fixed-height container (450px) to make the list scroll internally.
+        # border=True adds a neat outline framing the list.
+        with st.container(height=450, border=True):
             if len(st.session_state.tasks) > 0:
                 for i, t in enumerate(st.session_state.tasks, 1):
                     if t["prereq"]:
-                        st.html(f"{STYLE_WRAPPER}{i}. <b>{t['name']}</b> <br><i>(Requires: {t['prereq']})</i></div>")
+                        st.html(f"{STYLE_WRAPPER}{i}. <b>{t['name']}</b> <br><i>(Requires: {t['prereq']})</i></div><hr style='margin: 8px 0;'>")
                     else:
-                        st.html(f"{STYLE_WRAPPER}{i}. <b>{t['name']}</b></div>")
+                        st.html(f"{STYLE_WRAPPER}{i}. <b>{t['name']}</b></div><hr style='margin: 8px 0;'>")
             else:
                 st.html(f"{STYLE_WRAPPER}Your list is currently empty.</div>")
 
