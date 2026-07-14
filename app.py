@@ -1,7 +1,6 @@
 import streamlit as st
 import json
 import random
-import streamlit.components.v1 as components
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
@@ -57,82 +56,11 @@ st.html(f"""
 """)
 # ==============================================================================
 
-
 # ==============================================================================
-# 🌐 BROWSER-BASED HIGH-CAPACITY STORAGE BRIDGE (WIPE-PROOF)
+# 🗄️ STATE INITIALIZATION & APPARATUS
 # ==============================================================================
-# 1. Initialize our session states safely
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
-if "storage_initialized" not in st.session_state:
-    st.session_state.storage_initialized = False
-if "sync_trigger" not in st.session_state:
-    st.session_state.sync_trigger = False
-
-def save_tasks_to_browser():
-    """Triggers the JavaScript side to save the current task state to browser storage."""
-    # Crucial safety check: Never write to storage if we haven't successfully loaded yet!
-    if st.session_state.storage_initialized:
-        st.session_state.sync_trigger = True
-
-# 2. Inject the background bridge
-# This script reads from localStorage ONCE on startup. If it finds data, it sends it back.
-# If it finds nothing, it declares initialization complete so we can start writing.
-browser_data = components.html(
-    f"""
-    <script>
-    const STORAGE_KEY = "executive_function_tasks";
-    
-    // Send data from browser back to Streamlit
-    function sendToStreamlit(val) {{
-        window.parent.postMessage({{
-            type: "streamlit:setComponentValue",
-            value: val
-        }}, "*");
-    }}
-
-    // Check if we have an active save command from Python
-    const shouldSave = {json.dumps(st.session_state.sync_trigger)};
-    const initialized = {json.dumps(st.session_state.storage_initialized)};
-
-    if (shouldSave && initialized) {{
-        // Save Python's current state to the browser
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({json.dumps(st.session_state.tasks)}));
-    }}
-
-    // Read the current local storage state to feed back into Python
-    try {{
-        const data = localStorage.getItem(STORAGE_KEY);
-        if (data) {{
-            sendToStreamlit({{ "status": "loaded", "data": JSON.parse(data) }});
-        }} else {{
-            sendToStreamlit({{ "status": "empty", "data": [] }});
-        }}
-    }} catch (e) {{
-        sendToStreamlit({{ "status": "error", "data": [] }});
-    }}
-    </script>
-    """,
-    height=0,
-)
-
-# 3. Process the bridge payload safely
-if browser_data is not None and not st.session_state.storage_initialized:
-    # Only load the data if the bridge successfully returned our startup payload
-    payload = browser_data
-    if isinstance(payload, dict) and "status" in payload:
-        if payload["status"] in ["loaded", "empty"]:
-            st.session_state.tasks = payload["data"]
-            st.session_state.storage_initialized = True
-            st.rerun()  # Rerun once to make sure the UI displays the loaded tasks immediately
-
-# Reset the write trigger flag safely for the next interaction
-st.session_state.sync_trigger = False
-# ==============================================================================
-
-# Title is only shown when building the list now
-if "mode" in st.session_state and st.session_state.mode == "adding":
-    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
 
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0  
@@ -155,7 +83,7 @@ if "force_expand_list" not in st.session_state:
 if "affirmation" not in st.session_state:
     st.session_state.affirmation = None
 
-# Safe high limit supported by native browser local storage
+# High Capacity Target
 LIMIT = 500
 
 AFFIRMATIONS = [
@@ -168,6 +96,45 @@ AFFIRMATIONS = [
     "🌈 Spectacular execution!",
     "⚡ Pure efficiency! You're doing amazing!"
 ]
+
+# ==============================================================================
+# 💾 SIDEBAR: EXPORT / IMPORT (TOTAL PRIVACY PROTOCOL)
+# ==============================================================================
+with st.sidebar:
+    st.markdown("### 💾 Save & Backup Data")
+    st.markdown("Since this app operates with **total session privacy**, your tasks aren't stored on our server. Use these tools to keep your data between sessions.")
+    
+    # --- EXPORT INTERFACE ---
+    if len(st.session_state.tasks) > 0:
+        json_string = json.dumps(st.session_state.tasks, indent=4)
+        st.download_button(
+            label="📤 Export Task List (.json)",
+            data=json_string,
+            file_name="my_task_list.json",
+            mime="application/json",
+            use_container_width=True
+        )
+    else:
+        st.info("Add some tasks to unlock exporting.")
+
+    st.markdown("---")
+    
+    # --- IMPORT INTERFACE ---
+    uploaded_file = st.file_uploader("📥 Import a saved Task List File", type=["json"])
+    if uploaded_file is not None:
+        try:
+            loaded_tasks = json.load(uploaded_file)
+            if isinstance(loaded_tasks, list):
+                st.session_state.tasks = loaded_tasks
+                st.sidebar.success(f"Successfully loaded {len(loaded_tasks)} tasks!")
+            else:
+                st.sidebar.error("Invalid file format detected.")
+        except Exception as e:
+            st.sidebar.error(f"Error reading backup file: {e}")
+
+# Title is only shown when building the list now
+if st.session_state.mode == "adding":
+    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
 
     
 # --- 2. MODE: ADDING TASKS ---
@@ -193,7 +160,17 @@ if st.session_state.mode == "adding":
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
 
     with right_col:
-        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
+        st.html(f"<h2 style='text-align: center; margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
+        
+        # ⚠️ Scribble Location Custom Warning Message Banner
+        st.html(f"""
+            <div style='text-align: center; padding: 6px; background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 5px; margin-bottom: 15px;'>
+                <span style='color: #856404; font-family: {FONT_FAMILY}; font-size: 14px;'>
+                    ⚠️ <b>Important:</b> Remember to click the <b>Export Task List</b> button in the sidebar before refreshing or leaving to prevent data loss!
+                </span>
+            </div>
+        """)
+        
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
@@ -236,7 +213,6 @@ if st.session_state.mode == "adding":
                         st.session_state.confirm_delete_list = False
                         st.session_state.show_delete_dropdown = False
                         st.session_state.show_move_dropdowns = False
-                        save_tasks_to_browser()
                         st.rerun()
 
             # --- PROCESS FORM SUBMISSION ---
@@ -248,7 +224,6 @@ if st.session_state.mode == "adding":
                             "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
                         }
                         st.session_state.tasks.append(new_task)
-                        save_tasks_to_browser()
                         st.session_state.confirm_delete_list = False
                         st.rerun()
                     else:
@@ -281,8 +256,6 @@ if st.session_state.mode == "adding":
                         
                         moved_task = st.session_state.tasks.pop(from_idx)
                         st.session_state.tasks.insert(to_idx, moved_task)
-                        
-                        save_tasks_to_browser()
                         st.session_state.show_move_dropdowns = False
                         st.rerun()
                         
@@ -306,7 +279,6 @@ if st.session_state.mode == "adding":
                 if st.button("Confirm Delete", key="btn_confirm_delete", use_container_width=True):
                     del_idx = int(selected_num) - 1
                     del st.session_state.tasks[del_idx]
-                    save_tasks_to_browser()
                     st.session_state.show_delete_dropdown = False
                     st.rerun()
         
@@ -343,7 +315,6 @@ elif st.session_state.mode == "working":
         with col1:
             if st.button("👍 Yes, I completed it!", use_container_width=True):
                 del st.session_state.tasks[st.session_state.current_index]
-                save_tasks_to_browser()
                 st.session_state.affirmation = random.choice(AFFIRMATIONS)
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
@@ -377,6 +348,5 @@ elif st.session_state.mode == "working":
             st.session_state.current_index = 0
             st.session_state.mode = "adding"
             st.session_state.affirmation = None
-            save_tasks_to_browser()
             st.rerun()
             
