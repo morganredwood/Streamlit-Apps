@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import random
-import urllib.parse
+import streamlit.components.v1 as components
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
@@ -59,26 +59,98 @@ st.html(f"""
 
 
 # ==============================================================================
-# 🌐 URL STORAGE CONFIGURATION (Replaces the broken cookie component)
+# 🌐 BROWSER-BASED HIGH-CAPACITY STORAGE BRIDGE (IndexedDB / LocalStorage)
 # ==============================================================================
-def save_tasks_to_url():
-    """Encodes and writes the task list directly into the browser's URL query string."""
-    try:
-        json_str = json.dumps(st.session_state.tasks)
-        st.query_params["tasks"] = json_str
-    except Exception as e:
-        st.sidebar.error(f"URL Update Error: {e}")
-
-# Read natively from the URL string instantly on load—zero lagging, zero spinning wheel!
+# Initialize task state cleanly
 if "tasks" not in st.session_state:
-    try:
-        url_tasks = st.query_params.get("tasks")
-        if url_tasks:
-            st.session_state.tasks = json.loads(url_tasks)
-        else:
-            st.session_state.tasks = []
-    except Exception:
-        st.session_state.tasks = []
+    st.session_state.tasks = []
+if "storage_initialized" not in st.session_state:
+    st.session_state.storage_initialized = False
+
+def save_tasks_to_browser():
+    """Triggers the JavaScript side to save the current task state to browser storage."""
+    st.session_state.sync_trigger = True
+
+# Invisible bidirectional storage bridge component
+def browser_storage_bridge():
+    js_code = f"""
+    <script>
+    const STORAGE_KEY = "executive_function_tasks";
+    
+    // Listen for messages or data readiness from Streamlit
+    function sendDataToStreamlit(data) {{
+        window.parent.postMessage({{
+            type: "streamlit:setComponentValue",
+            value: data
+        }}, "*");
+    }}
+
+    // Read initial data from browser storage on startup
+    window.addEventListener("DOMContentLoaded", () => {{
+        try {{
+            const storedData = localStorage.getItem(STORAGE_KEY);
+            if (storedData) {{
+                sendDataToStreamlit(JSON.parse(storedData));
+            }} else {{
+                sendDataToStreamlit([]);
+            }}
+        }} catch (e) {{
+            console.error("Storage read failed:", e);
+            sendDataToStreamlit([]);
+        }}
+    }});
+
+    // Handle incoming data updates to write to storage
+    window.parent.addEventListener("message", (event) => {{
+        if (event.data && event.data.type === "streamlit:render") {{
+            const args = event.data.args;
+            if (args && args.tasks_to_save && args.should_save) {{
+                try {{
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(args.tasks_to_save));
+                }} catch (e) {{
+                    console.error("Storage write failed:", e);
+                }}
+            }}
+        }}
+    }});
+    </script>
+    """
+    # This component captures incoming browser storage data and feeds it back into Python securely
+    return components.html(
+        js_code, 
+        height=0, 
+        width=0, 
+        scrolling=false
+    )
+
+# Run the storage sync engine seamlessly in the background
+should_save = st.session_state.get("sync_trigger", False)
+browser_data = components.html(
+    f"""
+    <script>
+    const STORAGE_KEY = "executive_function_tasks";
+    // Check if parent wants to save data
+    if ({json.dumps(should_save)}) {{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({json.dumps(st.session_state.tasks)}));
+    }}
+    // Fetch current state back to Streamlit
+    const data = localStorage.getItem(STORAGE_KEY);
+    window.parent.postMessage({{
+        type: "streamlit:setComponentValue",
+        value: data ? JSON.parse(data) : null
+    }}, "*");
+    </script>
+    """,
+    height=0,
+)
+
+# Parse initial payload only once to prevent wipe loops
+if browser_data is not None and not st.session_state.storage_initialized:
+    st.session_state.tasks = browser_data if isinstance(browser_data, list) else []
+    st.session_state.storage_initialized = True
+
+# Reset the write trigger flag safely
+st.session_state.sync_trigger = False
 # ==============================================================================
 
 # Title is only shown when building the list now
@@ -119,7 +191,7 @@ AFFIRMATIONS = [
     "⚡ Pure efficiency! You're doing amazing!"
 ]
 
-   
+    
 # --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
     
@@ -186,7 +258,7 @@ if st.session_state.mode == "adding":
                         st.session_state.confirm_delete_list = False
                         st.session_state.show_delete_dropdown = False
                         st.session_state.show_move_dropdowns = False
-                        save_tasks_to_url()
+                        save_tasks_to_browser()
                         st.rerun()
 
             # --- PROCESS FORM SUBMISSION ---
@@ -198,7 +270,7 @@ if st.session_state.mode == "adding":
                             "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
                         }
                         st.session_state.tasks.append(new_task)
-                        save_tasks_to_url()
+                        save_tasks_to_browser()
                         st.session_state.confirm_delete_list = False
                         st.rerun()
                     else:
@@ -233,7 +305,7 @@ if st.session_state.mode == "adding":
                             moved_task = st.session_state.tasks.pop(from_idx)
                             st.session_state.tasks.insert(to_idx, moved_task)
                             
-                            save_tasks_to_url()
+                            save_tasks_to_browser()
                             st.session_state.show_move_dropdowns = False
                             st.rerun()
                     else:
@@ -259,7 +331,7 @@ if st.session_state.mode == "adding":
                     if selected_num != "None":
                         del_idx = int(selected_num) - 1
                         del st.session_state.tasks[del_idx]
-                        save_tasks_to_url()
+                        save_tasks_to_browser()
                         st.session_state.show_delete_dropdown = False
                         st.rerun()
                     else:
@@ -298,7 +370,7 @@ elif st.session_state.mode == "working":
         with col1:
             if st.button("👍 Yes, I completed it!", use_container_width=True):
                 del st.session_state.tasks[st.session_state.current_index]
-                save_tasks_to_url()
+                save_tasks_to_browser()
                 st.session_state.affirmation = random.choice(AFFIRMATIONS)
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
@@ -332,6 +404,6 @@ elif st.session_state.mode == "working":
             st.session_state.current_index = 0
             st.session_state.mode = "adding"
             st.session_state.affirmation = None
-            save_tasks_to_url()
+            save_tasks_to_browser()
             st.rerun()
             
