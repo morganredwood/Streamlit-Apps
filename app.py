@@ -1,108 +1,119 @@
 import streamlit as st
 import json
-from streamlit_local_storage import LocalStorage
+import random
+import os
+# ==============================================================================
+# 🎨 CENTRAL STYLE CONFIGURATION (Change your fonts and colors here!)
+# ==============================================================================
+TEXT_COLOR = "black"  
+FONT_FAMILY = "Georgia"  
 
-# --- PAGE CONFIGURATION & STYLING ---
-st.set_page_config(page_title="Executive Function Assistant", layout="wide")
+STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
 
-# Custom Typography Setup (Georgia Font & Spacing)
-STYLE_WRAPPER = """
-<div style="
-    font-family: 'Georgia', serif; 
-    line-height: 1.5; 
-    font-size: 1.1rem;
-">
-"""
+# 🎛️ BUTTON TEXT COLOR SWITCHES (Change individual button text colors here!)
+COLOR_ADD_TASK = "green"
+COLOR_MOVE_TASK = "blue"
+COLOR_DELETE_TASK = "red"
+COLOR_DELETE_LIST = "black"
 
-st.markdown("""
+# Bulletproof positional CSS injection targeting column contents at any depth inside the form
+st.html(f"""
     <style>
-    /* Global Georgia font application */
-    html, body, [data-testid="stWidgetLabel"] p, .stSelectbox label {
-        font-family: 'Georgia', serif !important;
-    }
-    
-    /* Button Color Theme Matrix */
-    div.stButton > button[key^="add_"] {
-        background-color: #4A90E2 !important; /* Blue */
-        color: white !important;
-    }
-    div.stButton > button[key^="move_"] {
-        background-color: #F5A623 !important; /* Orange/Amber */
-        color: white !important;
-    }
-    div.stButton > button[key^="del_"] {
-        background-color: #D0021B !important; /* Crimson Red */
-        color: white !important;
-    }
-    div.stButton > button[key^="start_"] {
-        background-color: #417505 !important; /* Forest Green */
-        color: white !important;
-    }
-    div.stButton > button[key^="clear_"] {
-        background-color: #7ED321 !important; /* Light Green */
-        color: white !important;
-    }
-    
-    /* Hover effects for buttons */
-    div.stButton > button:hover {
-        opacity: 0.85 !important;
-        transform: scale(1.01);
-        transition: all 0.1s ease-in-out;
-    }
+    /* 1. Add Task Button (Column 1) */
+    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(1) button p {{
+        color: {COLOR_ADD_TASK} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
+    /* 2. Move Task Button (Column 2) */
+    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) button p {{
+        color: {COLOR_MOVE_TASK} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
+    /* 3. Delete Task Button (Column 3) */
+    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) button p {{
+        color: {COLOR_DELETE_TASK} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
+    /* 4. Delete List Button (Column 4) */
+    div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(4) button p {{
+        color: {COLOR_DELETE_LIST} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
     </style>
-""", unsafe_allow_html=True)
+""")
+# ==============================================================================
 
-# --- 1. PRIVACY-SECURE BROWSER LOCAL STORAGE SETUP ---
-# Initializes the connection to the visitor's individual browser cache
-local_storage = LocalStorage()
+# --- 1. BULLETPROOF LOCAL FILE STORAGE SETUP ---
+BACKUP_FILE = "task_backup.json"
 
 def load_tasks_from_file():
-    """Reads tasks directly from the visitor's private browser memory."""
-    try:
-        saved_data = local_storage.getItem("my_private_tasks")
-        if saved_data:
-            return json.loads(saved_data)
-    except Exception:
-        pass
+    """Instantly reads the JSON backup file on local disk."""
+    if os.path.exists(BACKUP_FILE):
+        try:
+            with open(BACKUP_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return []
     return []
 
 def save_tasks_to_file():
-    """Saves tasks directly down to the visitor's private browser memory."""
+    """Instantly saves the current list to local disk."""
     try:
-        tasks_json = json.dumps(st.session_state.tasks)
-        local_storage.setItem("my_private_tasks", tasks_json)
-    except Exception:
-        pass
+        with open(BACKUP_FILE, "w") as f:
+            json.dump(st.session_state.tasks, f, indent=4)
+    except Exception as e:
+        st.sidebar.error(f"Save Error: {e}")
 
-# --- INITIALIZE SESSION STATE ---
+# Initialize tasks instantly from disk on page load
 if "tasks" not in st.session_state:
-    # First boot attempt to read from the visitor's browser local storage
     st.session_state.tasks = load_tasks_from_file()
 
-if "mode" not in st.session_state:
-    st.session_state.mode = "adding"  # Options: "adding", "working"
+# Title is only shown when building the list now
+if "mode" in st.session_state and st.session_state.mode == "adding":
+    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
 
-if "working_index" not in st.session_state:
-    st.session_state.working_index = 0
+if "current_index" not in st.session_state:
+    st.session_state.current_index = 0  
+
+if "mode" not in st.session_state:
+    st.session_state.mode = "adding"  
+
+if "show_delete_dropdown" not in st.session_state:
+    st.session_state.show_delete_dropdown = False
+
+if "show_move_dropdowns" not in st.session_state:
+    st.session_state.show_move_dropdowns = False
 
 if "confirm_delete_list" not in st.session_state:
     st.session_state.confirm_delete_list = False
 
-# --- APP HEADER ---
-st.html(f"{STYLE_WRAPPER}<h1>✨ Executive Function Task Assistant</h1></div>")
-st.write("---")
+if "force_expand_list" not in st.session_state:
+    st.session_state.force_expand_list = True
+
+if "affirmation" not in st.session_state:
+    st.session_state.affirmation = None
+
+LIMIT = 100
+
+AFFIRMATIONS = [
+    "✨ Fantastic job getting that done!",
+    "🎉 Way to cross that off your list!",
+    "🚀 Outstanding momentum! Keep it going!",
+    "⭐ Brilliant effort on this task!",
+    "🎯 Crushing your goals one step at a time!",
+    "🏆 Victory! Another item successfully completed!",
+    "🌈 Spectacular execution!",
+    "⚡ Pure efficiency! You're doing amazing!"
+]
 
 # --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
     
-    # Establish a clean layout grid
     left_col, right_col = st.columns([1, 1.5], gap="large")
 
     with left_col:
-        st.html(f"{STYLE_WRAPPER}<b>📋 Full Task List</b></div><br>")
-        
-        # Native, scroll-locked container window that retains its position 
-        with st.container(height=400):
+        is_expanded = st.session_state.force_expand_list
+        with st.expander("📋 View / Hide Full Task List", expanded=is_expanded):
             if len(st.session_state.tasks) > 0:
                 for i, t in enumerate(st.session_state.tasks, 1):
                     if t["prereq"]:
@@ -114,47 +125,33 @@ if st.session_state.mode == "adding":
 
         if st.session_state.confirm_delete_list:
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
-            if st.sidebar.button("Yes, Nuke the Entire List", key="del_confirm_nuke"):
-                st.session_state.tasks = []
-                save_tasks_to_file()
-                st.session_state.confirm_delete_list = False
-                st.rerun()
-            if st.sidebar.button("Cancel", key="add_cancel_nuke"):
-                st.session_state.confirm_delete_list = False
-                st.rerun()
 
     with right_col:
-        # Check if global design limits are set, if not, fallback safely
-        if 'LIMIT' not in locals():
-            LIMIT = 50 
-        if 'TEXT_COLOR' not in locals():
-            TEXT_COLOR = "#333333"
-
-        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {'Georgia'};'>Build Your List</h2>", unsafe_allow_html=True)
-        st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>", unsafe_allow_html=True)
+        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {'Georgia'};'>Build Your List</h2>")
+        st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
-            st.html(f"<div style='color: {'purple'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>", unsafe_allow_html=True)
+            st.html(f"<div style='color: {'purple'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>")
             task_text = st.text_input(label="Task Input", label_visibility="collapsed")
             
-            st.html(f"<div style='color: {'gray'}; font-family: {'Georgia'};'>What must be completed first? (Optional)</div>", unsafe_allow_html=True)
+            st.html(f"<div style='color: {'gray'}; font-family: {'Georgia'};'>What must be completed first? (Optional)</div>")
             prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
-            # Updated into a 4-column row with keys assigned for perfect color targeting
+            # Updated into a 4-column row to fit the new "Move Task" button cleanly
             btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
             
             with btn_col1:
-                submit_task = st.form_submit_button("Add Task", key="add_btn")
+                submit_task = st.form_submit_button("Add Task", key="btn_add")
 
             with btn_col2:
-                move_task_click = st.form_submit_button("Move Task", key="move_btn")
+                move_task_click = st.form_submit_button("Move Task", key="btn_move")
                 if move_task_click:
                     st.session_state.show_move_dropdowns = True
                     st.session_state.show_delete_dropdown = False
                     st.session_state.force_expand_list = True
 
             with btn_col3:
-                delete_task_click = st.form_submit_button("Delete Task", key="del_btn")
+                delete_task_click = st.form_submit_button("Delete Task", key="btn_delete_task")
                 if delete_task_click:
                     st.session_state.show_delete_dropdown = True
                     st.session_state.show_move_dropdowns = False
@@ -162,14 +159,14 @@ if st.session_state.mode == "adding":
 
             with btn_col4:
                 black_btn_label = "Yes, All" if st.session_state.confirm_delete_list else "Delete List"
-                delete_list_click = st.form_submit_button(black_btn_label, key="del_list_btn")
+                delete_list_click = st.form_submit_button(black_btn_label, key="btn_delete_list")
                 if delete_list_click:
                     if not st.session_state.confirm_delete_list:
                         st.session_state.confirm_delete_list = True
                         st.rerun()
                     else:
                         st.session_state.tasks = []
-                        st.session_state.working_index = 0  # Aligned to match your workspace state
+                        st.session_state.current_index = 0
                         st.session_state.confirm_delete_list = False
                         st.session_state.show_delete_dropdown = False
                         st.session_state.show_move_dropdowns = False
@@ -204,28 +201,28 @@ if st.session_state.mode == "adding":
                     width: 100% !important;
                 }
                 </style>
-            """, unsafe_allow_html=True)
+            """)
             if st.button("Go Back", key="go_back_btn"):
                 st.session_state.confirm_delete_list = False
                 st.session_state.show_delete_dropdown = False
                 st.session_state.show_move_dropdowns = False
                 st.rerun()
-            st.html("<script>document.getElementById('root').querySelector('button:has(div:contains(\"Go Back\"))').classList.add('giant-goback-btn');</script>", unsafe_allow_html=True)
+            st.html("<script>document.getElementById('root').querySelector('button:has(div:contains(\"Go Back\"))').classList.add('giant-goback-btn');</script>")
 
         # --- MOVE TASK DROPDOWNS ---
         if st.session_state.show_move_dropdowns and len(st.session_state.tasks) > 1:
             st.markdown("---")
-            st.html(f"{STYLE_WRAPPER}<b>Rearrange Task Order:</b></div>", unsafe_allow_html=True)
+            st.html(f"{STYLE_WRAPPER}<b>Rearrange Task Order:</b></div>")
             
             move_col1, move_col2 = st.columns(2)
             task_numbers = [str(i) for i in range(1, len(st.session_state.tasks) + 1)]
             
             with move_col1:
-                st.html(f"{STYLE_WRAPPER}Move task number:</div>", unsafe_allow_html=True)
+                st.html(f"{STYLE_WRAPPER}Move task number:</div>")
                 from_num = st.selectbox(label="From Position", options=["Choose..."] + task_numbers, key="move_from_drop", label_visibility="collapsed")
                 
             with move_col2:
-                st.html(f"{STYLE_WRAPPER}To new position:</div>", unsafe_allow_html=True)
+                st.html(f"{STYLE_WRAPPER}To new position:</div>")
                 to_num = st.selectbox(label="To Position", options=["Choose..."] + task_numbers, key="move_to_drop", label_visibility="collapsed")
             
             if from_num != "Choose..." and to_num != "Choose...":
@@ -233,6 +230,7 @@ if st.session_state.mode == "adding":
                     from_idx = int(from_num) - 1
                     to_idx = int(to_num) - 1
                     
+                    # Pop the task out of the list and slide it into its new index position
                     moved_task = st.session_state.tasks.pop(from_idx)
                     st.session_state.tasks.insert(to_idx, moved_task)
                     
@@ -244,7 +242,7 @@ if st.session_state.mode == "adding":
             st.session_state.show_move_dropdowns = False
 
         if st.session_state.show_delete_dropdown and len(st.session_state.tasks) > 0:
-            st.html(f"{STYLE_WRAPPER}Select task number to remove permanently:</div>", unsafe_allow_html=True)
+            st.html(f"{STYLE_WRAPPER}Select task number to remove permanently:</div>")
             task_numbers = [str(i) for i in range(1, len(st.session_state.tasks) + 1)]
             selected_num = st.selectbox(label="Select Task Dropdown", options=["None"] + task_numbers, label_visibility="collapsed")
             
@@ -258,70 +256,72 @@ if st.session_state.mode == "adding":
         st.markdown("---")
         
         if len(st.session_state.tasks) > 0:
-            st.html("<div style='display: flex; justify-content: center; margin-top: 25px;'>", unsafe_allow_html=True)
-            if st.button("Start Working", key="start_start_engine_big"): # Updated key to trigger green button style matrix
+            st.html("<div style='display: flex; justify-content: center; margin-top: 25px;'>")
+            if st.button("Start Working", key="start_working_big"):
                 st.session_state.mode = "working"
-                st.session_state.working_index = 0  # Aligned to match your active workspace state
+                st.session_state.current_index = 0
                 st.session_state.affirmation = None
                 st.rerun()
-            st.html("</div>", unsafe_allow_html=True)
+            st.html("</div>")
 
-# --- 3. MODE: WORKING ACTIVE CONTEXT ---
+# --- 3. MODE: WORKING ON TASKS ---
 elif st.session_state.mode == "working":
-    if st.session_state.working_index < len(st.session_state.tasks):
-        current_task = st.session_state.tasks[st.session_state.working_index]
-        
-        # Safety Check: Is there an unfinished prerequisite?
-        unfinished_prereq = None
-        if current_task["prereq"]:
-            # Scan all preceding items to check if the dependency has been checked off yet
-            for idx, t in enumerate(st.session_state.tasks):
-                if t["name"] == current_task["prereq"] and idx >= st.session_state.working_index:
-                    unfinished_prereq = current_task["prereq"]
-                    break
+    st.write("")
+    st.write("")
 
-        # Display the single, hyper-focused working block
-        st.html(f"""
-        {STYLE_WRAPPER}
-        <div style="background-color: #f9f9f9; padding: 25px; border-radius: 10px; border-left: 5px solid #417505;">
-            <p style="font-size: 0.9rem; color: #666; margin: 0;">CURRENT ACTIVE TASK STEP ({st.session_state.working_index + 1} of {len(st.session_state.tasks)})</p>
-            <h2 style="margin: 10px 0 5px 0; color: #111;">{current_task['name']}</h2>
-        </div>
-        </div>
-        """)
-        
-        if unfinished_prereq:
-            st.warning(f"⚠️ **Focus Blocked**: This task requires **'{unfinished_prereq}'** to be completed first, which is further down the list. Use the button below to skip this for now, or return to edit mode to reorder your steps.")
+    if len(st.session_state.tasks) > 0:
+        if st.session_state.current_index >= len(st.session_state.tasks):
+            st.session_state.current_index = 0
 
+        current_task = st.session_state.tasks[st.session_state.current_index]
+        
+        st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {'Georgia'};'>{current_task['name']}</h1>")
+        
+        if current_task['prereq']:
+            st.warning(f"⚠️ **Prerequisite reminder:** You need to finish this task first: **{current_task['prereq']}**")
+        
+        st.write("")
         st.write("")
 
-        # Action Execution Grid
-        work_col1, work_col2, work_col3 = st.columns(3)
-        with work_col1:
-            if st.button("✅ Mark Complete", key="start_complete", use_container_width=True):
-                # Pop it completely out of existence
-                st.session_state.tasks.pop(st.session_state.working_index)
-                save_tasks_to_file()
-                # Do not increment index because the next item naturally drops down into the current slot
-                st.rerun()
-                
-        with work_col2:
-            if st.button("⏭️ Skip Step for Now", key="add_skip", use_container_width=True):
-                st.session_state.working_index += 1
-                st.rerun()
-                
-        with work_col3:
-            if st.button("🛠️ Return to Edit List", key="clear_return", use_container_width=True):
-                st.session_state.mode = "adding"
-                st.rerun()
-                
-    else:
-        # End of the active session sequence loop
-        st.balloons()
-        st.html(f"{STYLE_WRAPPER}<h2>🎉 All caught up! Outstanding job!</h2></div>")
-        st.write("You skipped or completed everything in your immediate working sequence.")
+        col1, col2, col3 = st.columns(3)
         
-        if st.button("Back to Task Builder", key="clear_finish_return"):
+        with col1:
+            if st.button("👍 Yes, I completed it!", use_container_width=True):
+                del st.session_state.tasks[st.session_state.current_index]
+                save_tasks_to_file()
+                st.session_state.affirmation = random.choice(AFFIRMATIONS)
+                if st.session_state.current_index >= len(st.session_state.tasks):
+                    st.session_state.current_index = 0
+                st.rerun()
+
+        with col2:
+            if st.button("👎 No, skip it for now", use_container_width=True):
+                st.session_state.current_index += 1
+                st.session_state.affirmation = None
+                if st.session_state.current_index >= len(st.session_state.tasks):
+                    st.session_state.current_index = 0
+                st.rerun()
+
+        with col3:
+            if st.button("↩️ Check the list again", use_container_width=True):
+                st.session_state.mode = "adding"
+                st.session_state.affirmation = None
+                st.rerun()
+
+        if st.session_state.affirmation:
+            st.write("")
+            st.write("")
+            st.html(f"<div style='text-align: center; font-size: 28px; font-weight: 400; color: {'orange'}; font-family: {'Comic Sans MS'};'>{st.session_state.affirmation}</div>")
+
+    else:
+        st.balloons()
+        st.success("All tasks have been completed! Hooray!")
+        
+        if st.button("Restart Program", use_container_width=True):
+            st.session_state.tasks = []
+            st.session_state.current_index = 0
             st.session_state.mode = "adding"
-            st.session_state.working_index = 0
+            st.session_state.affirmation = None
+            save_tasks_to_file()
             st.rerun()
+            
