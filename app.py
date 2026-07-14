@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import random
-from streamlit_cookies_controller import CookieController
+import urllib.parse
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
@@ -59,27 +59,22 @@ st.html(f"""
 
 
 # ==============================================================================
-# 🍪 BROWSER COOKIE CONFIGURATION (Ensures private, permanent user lists)
+# 🌐 URL STORAGE CONFIGURATION (Replaces the broken cookie component)
 # ==============================================================================
-def save_tasks_to_browser():
-    """Saves the current list directly into the visitor's browser cookies."""
+def save_tasks_to_url():
+    """Encodes and writes the task list directly into the browser's URL query string."""
     try:
-        controller = CookieController()
         json_str = json.dumps(st.session_state.tasks)
-        controller.set('user_task_list', json_str, max_age=2592000)
+        st.query_params["tasks"] = json_str
     except Exception as e:
-        st.sidebar.error(f"Storage Error: {e}")
+        st.sidebar.error(f"URL Update Error: {e}")
 
-# Read natively from request headers instantly—zero lag, zero spinning wheel!
+# Read natively from the URL string instantly on load—zero lagging, zero spinning wheel!
 if "tasks" not in st.session_state:
     try:
-        # Access the cookie value via Streamlit's native request context
-        raw_cookie = st.context.cookies.get('user_task_list')
-        if raw_cookie:
-            # Handle standard URL-encoding strings gracefully if present
-            import urllib.parse
-            decoded_cookie = urllib.parse.unquote(raw_cookie)
-            st.session_state.tasks = json.loads(decoded_cookie)
+        url_tasks = st.query_params.get("tasks")
+        if url_tasks:
+            st.session_state.tasks = json.loads(url_tasks)
         else:
             st.session_state.tasks = []
     except Exception:
@@ -149,7 +144,7 @@ if st.session_state.mode == "adding":
 
     with right_col:
         st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
-        st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div>br>")
+        st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
             st.html(f"<div style='color: purple; font-family: {FONT_FAMILY};'>Enter a task you would like to add:</div>")
@@ -191,7 +186,7 @@ if st.session_state.mode == "adding":
                         st.session_state.confirm_delete_list = False
                         st.session_state.show_delete_dropdown = False
                         st.session_state.show_move_dropdowns = False
-                        save_tasks_to_browser()
+                        save_tasks_to_url()
                         st.rerun()
 
             # --- PROCESS FORM SUBMISSION ---
@@ -203,7 +198,7 @@ if st.session_state.mode == "adding":
                             "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
                         }
                         st.session_state.tasks.append(new_task)
-                        save_tasks_to_browser()
+                        save_tasks_to_url()
                         st.session_state.confirm_delete_list = False
                         st.rerun()
                     else:
@@ -238,7 +233,7 @@ if st.session_state.mode == "adding":
                             moved_task = st.session_state.tasks.pop(from_idx)
                             st.session_state.tasks.insert(to_idx, moved_task)
                             
-                            save_tasks_to_browser()
+                            save_tasks_to_url()
                             st.session_state.show_move_dropdowns = False
                             st.rerun()
                     else:
@@ -264,7 +259,7 @@ if st.session_state.mode == "adding":
                     if selected_num != "None":
                         del_idx = int(selected_num) - 1
                         del st.session_state.tasks[del_idx]
-                        save_tasks_to_browser()
+                        save_tasks_to_url()
                         st.session_state.show_delete_dropdown = False
                         st.rerun()
                     else:
@@ -303,7 +298,7 @@ elif st.session_state.mode == "working":
         with col1:
             if st.button("👍 Yes, I completed it!", use_container_width=True):
                 del st.session_state.tasks[st.session_state.current_index]
-                save_tasks_to_browser()
+                save_tasks_to_url()
                 st.session_state.affirmation = random.choice(AFFIRMATIONS)
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
@@ -337,6 +332,6 @@ elif st.session_state.mode == "working":
             st.session_state.current_index = 0
             st.session_state.mode = "adding"
             st.session_state.affirmation = None
-            save_tasks_to_browser()
+            save_tasks_to_url()
             st.rerun()
             
