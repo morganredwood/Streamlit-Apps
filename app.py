@@ -65,14 +65,17 @@ controller = CookieController()
 
 def load_tasks_from_browser():
     """Reads the private task list stored in the visitor's browser cookies."""
-    saved_cookie = controller.get('user_task_list')
-    if saved_cookie:
-        try:
-            # Decode the stored JSON string back into a Python list
-            return json.loads(saved_cookie)
-        except Exception:
-            return []
-    return []
+    try:
+        saved_cookie = controller.get('user_task_list')
+        if saved_cookie:
+            # Decode the stored JSON string back into a Python list, and signal True (Ready)
+            return json.loads(saved_cookie), True
+        return [], True  # No cookie found, but the controller is ready and empty
+    except TypeError:
+        # The cookie controller isn't fully initialized yet, signal False (Not Ready)
+        return [], False
+    except Exception:
+        return [], True
 
 def save_tasks_to_browser():
     """Saves the current list directly into the visitor's browser cookies."""
@@ -89,12 +92,19 @@ def save_tasks_to_browser():
 if "cookies_initialized" not in st.session_state:
     st.session_state.cookies_initialized = False
 
+# ==============================================================================
+# Read and initialize the private list on the very first page load
+# ==============================================================================
 if "tasks" not in st.session_state:
-    # On a fresh reload, give the cookie component one quick cycle to fetch data
-    if not st.session_state.cookies_initialized:
-        st.session_state.cookies_initialized = True
+    saved_tasks, controller_ready = load_tasks_from_browser()
+    
+    if controller_ready:
+        st.session_state.tasks = saved_tasks
+    else:
+        # If the browser hasn't handed over the data yet, pause for a frame and try again
+        st.write("") 
         st.rerun()
-        
+# ==============================================================================        
     st.session_state.tasks = load_tasks_from_browser()
 # ==============================================================================
 # ==============================================================================
