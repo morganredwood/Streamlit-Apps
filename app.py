@@ -129,7 +129,9 @@ AFFIRMATIONS = [
 # --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
     
-    left_col, right_col = st.columns([1, 1.5], gap="large")
+    # We changed the ratio from [1, 1.5] to [2, 1.2] to make the task list roughly twice as wide 
+    # while leaving a perfect amount of room for the input forms and control buttons.
+    left_col, right_col = st.columns([2, 1.2], gap="large")
 
     with left_col:
         st.html(f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List</h3>")
