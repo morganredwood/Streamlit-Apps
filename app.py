@@ -50,7 +50,7 @@ st.markdown("""
         transition: all 0.1s ease-in-out;
     }
     </style>
-""", unsafe_style_allowed=True)
+""", unsafe_allow_html=True)
 
 # --- 1. PRIVACY-SECURE BROWSER LOCAL STORAGE SETUP ---
 # Initializes the connection to the visitor's individual browser cache
@@ -251,4 +251,3 @@ elif st.session_state.mode == "working":
             st.session_state.mode = "adding"
             st.session_state.working_index = 0
             st.rerun()
-            
