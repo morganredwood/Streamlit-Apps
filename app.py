@@ -61,20 +61,6 @@ st.html(f"""
 # ==============================================================================
 # 🍪 BROWSER COOKIE CONFIGURATION (Ensures private, permanent user lists)
 # ==============================================================================
-def load_tasks_from_browser():
-    """Reads the private task list stored in the visitor's browser cookies."""
-    try:
-        # Initialize the controller locally inside the function to prevent global hanging
-        controller = CookieController()
-        saved_cookie = controller.get('user_task_list')
-        if saved_cookie:
-            return json.loads(saved_cookie), True
-        return [], True  
-    except TypeError:
-        return [], False 
-    except Exception:
-        return [], True
-
 def save_tasks_to_browser():
     """Saves the current list directly into the visitor's browser cookies."""
     try:
@@ -84,25 +70,22 @@ def save_tasks_to_browser():
     except Exception as e:
         st.sidebar.error(f"Storage Error: {e}")
 
-# Read and initialize the private list safely on the very first page load
-if "cookie_loaded" not in st.session_state:
-    st.session_state.cookie_loaded = False
-
+# Read natively from request headers instantly—zero lag, zero spinning wheel!
 if "tasks" not in st.session_state:
-    st.session_state.tasks = []
-
-# Fetch tasks if they haven't been successfully pulled from the browser yet
-if not st.session_state.cookie_loaded:
-    saved_tasks, controller_ready = load_tasks_from_browser()
-    if controller_ready:
-        st.session_state.tasks = saved_tasks
-        st.session_state.cookie_loaded = True
-        st.rerun()
-    else:
-        # Provide a visual indicator while Streamlit hooks into the browser
-        st.info("⚡ Waking up secure browser storage... Please wait a brief moment.")
-        st.stop()
+    try:
+        # Access the cookie value via Streamlit's native request context
+        raw_cookie = st.context.cookies.get('user_task_list')
+        if raw_cookie:
+            # Handle standard URL-encoding strings gracefully if present
+            import urllib.parse
+            decoded_cookie = urllib.parse.unquote(raw_cookie)
+            st.session_state.tasks = json.loads(decoded_cookie)
+        else:
+            st.session_state.tasks = []
+    except Exception:
+        st.session_state.tasks = []
 # ==============================================================================
+
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
@@ -166,7 +149,7 @@ if st.session_state.mode == "adding":
 
     with right_col:
         st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
-        st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
+        st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div>br>")
 
         with st.form(key="input_form", clear_on_submit=True):
             st.html(f"<div style='color: purple; font-family: {FONT_FAMILY};'>Enter a task you would like to add:</div>")
@@ -356,3 +339,4 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_browser()
             st.rerun()
+            
