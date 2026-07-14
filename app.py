@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import random
 import streamlit.components.v1 as components
+
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
 
@@ -378,3 +379,4 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_browser()
             st.rerun()
+            
