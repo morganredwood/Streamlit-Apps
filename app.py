@@ -163,28 +163,32 @@ if st.session_state.mode == "adding":
             prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
             # Updated into a 4-column row to fit the new "Move Task" button cleanly
-            btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
+            # Split the buttons into two rows so they have plenty of room to display horizontally
+            row1_col1, row1_col2 = st.columns(2)
+            row2_col1, row2_col2 = st.columns(2)
             
-            with btn_col1:
-                submit_task = st.form_submit_button("Add Task", key="btn_add")
+            # --- ROW 1 ---
+            with row1_col1:
+                submit_task = st.form_submit_button("Add Task", key="btn_add", use_container_width=True)
 
-            with btn_col2:
-                move_task_click = st.form_submit_button("Move Task", key="btn_move")
+            with row1_col2:
+                move_task_click = st.form_submit_button("Move Task", key="btn_move", use_container_width=True)
                 if move_task_click:
                     st.session_state.show_move_dropdowns = True
                     st.session_state.show_delete_dropdown = False
                     st.session_state.force_expand_list = True
 
-            with btn_col3:
-                delete_task_click = st.form_submit_button("Delete Task", key="btn_delete_task")
+            # --- ROW 2 ---
+            with row2_col1:
+                delete_task_click = st.form_submit_button("Delete Task", key="btn_delete_task", use_container_width=True)
                 if delete_task_click:
                     st.session_state.show_delete_dropdown = True
                     st.session_state.show_move_dropdowns = False
                     st.session_state.force_expand_list = True
 
-            with btn_col4:
+            with row2_col2:
                 black_btn_label = "Yes, All" if st.session_state.confirm_delete_list else "Delete List"
-                delete_list_click = st.form_submit_button(black_btn_label, key="btn_delete_list")
+                delete_list_click = st.form_submit_button(black_btn_label, key="btn_delete_list", use_container_width=True)
                 if delete_list_click:
                     if not st.session_state.confirm_delete_list:
                         st.session_state.confirm_delete_list = True
