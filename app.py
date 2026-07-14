@@ -83,12 +83,22 @@ def save_tasks_to_browser():
     except Exception as e:
         st.sidebar.error(f"Storage Error: {e}")
 
+# ==============================================================================
 # Read and initialize the private list on the very first page load
+# ==============================================================================
+if "cookies_initialized" not in st.session_state:
+    st.session_state.cookies_initialized = False
+
 if "tasks" not in st.session_state:
-    # A tiny pause lets the browser hand over the cookie data smoothly
-    st.write("") 
+    # On a fresh reload, give the cookie component one quick cycle to fetch data
+    if not st.session_state.cookies_initialized:
+        st.session_state.cookies_initialized = True
+        st.rerun()
+        
     st.session_state.tasks = load_tasks_from_browser()
 # ==============================================================================
+# ==============================================================================
+
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
