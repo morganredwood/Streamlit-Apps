@@ -61,27 +61,24 @@ st.html(f"""
 # ==============================================================================
 # 🍪 BROWSER COOKIE CONFIGURATION (Ensures private, permanent user lists)
 # ==============================================================================
-# Initialize the browser cookie controller safely inside session state
-if "cookie_controller" not in st.session_state:
-    st.session_state.cookie_controller = CookieController()
-
-controller = st.session_state.cookie_controller
-
 def load_tasks_from_browser():
     """Reads the private task list stored in the visitor's browser cookies."""
     try:
+        # Initialize the controller locally inside the function to prevent global hanging
+        controller = CookieController()
         saved_cookie = controller.get('user_task_list')
         if saved_cookie:
             return json.loads(saved_cookie), True
-        return [], True  # Controller is ready, cookie is empty
+        return [], True  
     except TypeError:
-        return [], False # Controller is not ready yet
+        return [], False 
     except Exception:
         return [], True
 
 def save_tasks_to_browser():
     """Saves the current list directly into the visitor's browser cookies."""
     try:
+        controller = CookieController()
         json_str = json.dumps(st.session_state.tasks)
         controller.set('user_task_list', json_str, max_age=2592000)
     except Exception as e:
@@ -102,11 +99,10 @@ if not st.session_state.cookie_loaded:
         st.session_state.cookie_loaded = True
         st.rerun()
     else:
-        # Instead of st.rerun(), let the component naturally render and connect
+        # Provide a visual indicator while Streamlit hooks into the browser
         st.info("⚡ Waking up secure browser storage... Please wait a brief moment.")
         st.stop()
 # ==============================================================================
-
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
@@ -360,4 +356,3 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_browser()
             st.rerun()
-            
