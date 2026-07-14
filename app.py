@@ -196,6 +196,25 @@ if st.session_state.mode == "adding":
                         st.session_state.show_move_dropdowns = False
                         save_tasks_to_browser()
                         st.rerun()
+            # --- PROCESS FORM SUBMISSION ---
+            if submit_task:
+                if task_text.strip() != "":
+                    # Ensure we haven't hit the arbitrary task limit
+                    if len(st.session_state.tasks) < LIMIT:
+                        # Create the new task dictionary object
+                        new_task = {
+                            "name": task_text.strip(),
+                            "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
+                        }
+                        # Append to session state and update browser cookies
+                        st.session_state.tasks.append(new_task)
+                        save_tasks_to_browser()
+                        st.session_state.confirm_delete_list = False
+                        st.rerun()
+                    else:
+                        st.sidebar.error(f"Limit reached! You cannot add more than {LIMIT} tasks.")
+                else:
+                    st.sidebar.warning("Task name cannot be blank!")
 
         # --- MOVE TASK DROPDOWNS ---
         if st.session_state.show_move_dropdowns and len(st.session_state.tasks) > 1:
