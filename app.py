@@ -127,17 +127,16 @@ AFFIRMATIONS = [
 
 # --- 2. MODE: ADDING TASKS ---
 # --- 2. MODE: ADDING TASKS ---
+# --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
     
-    # We changed the ratio from [1, 1.5] to [2, 1.2] to make the task list roughly twice as wide 
-    # while leaving a perfect amount of room for the input forms and control buttons.
-    left_col, right_col = st.columns([2, 1.2], gap="large")
+    # We changed the ratio to [2, 2.4] to give the form column double its previous width,
+    # making text inputs wide and allowing buttons to fit on a single horizontal row.
+    left_col, right_col = st.columns([2, 2.4], gap="large")
 
     with left_col:
         st.html(f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List</h3>")
         
-        # We use a fixed-height container (450px) to make the list scroll internally.
-        # border=True adds a neat outline framing the list.
         with st.container(height=450, border=True):
             if len(st.session_state.tasks) > 0:
                 for i, t in enumerate(st.session_state.tasks, 1):
@@ -152,41 +151,37 @@ if st.session_state.mode == "adding":
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
 
     with right_col:
-        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {'Georgia'};'>Build Your List</h2>")
+        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
-            st.html(f"<div style='color: {'purple'}; font-family: {'Georgia'};'>Enter a task you would like to add:</div>")
+            st.html(f"<div style='color: purple; font-family: {FONT_FAMILY};'>Enter a task you would like to add:</div>")
             task_text = st.text_input(label="Task Input", label_visibility="collapsed")
             
-            st.html(f"<div style='color: {'gray'}; font-family: {'Georgia'};'>What must be completed first? (Optional)</div>")
+            st.html(f"<div style='color: gray; font-family: {FONT_FAMILY};'>What must be completed first? (Optional)</div>")
             prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
-            # Updated into a 4-column row to fit the new "Move Task" button cleanly
-            # Split the buttons into two rows so they have plenty of room to display horizontally
-            row1_col1, row1_col2 = st.columns(2)
-            row2_col1, row2_col2 = st.columns(2)
+            # With the column now twice as wide, we can return to a clean 4-column row!
+            btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
             
-            # --- ROW 1 ---
-            with row1_col1:
+            with btn_col1:
                 submit_task = st.form_submit_button("Add Task", key="btn_add", use_container_width=True)
 
-            with row1_col2:
+            with btn_col2:
                 move_task_click = st.form_submit_button("Move Task", key="btn_move", use_container_width=True)
                 if move_task_click:
                     st.session_state.show_move_dropdowns = True
                     st.session_state.show_delete_dropdown = False
                     st.session_state.force_expand_list = True
 
-            # --- ROW 2 ---
-            with row2_col1:
+            with btn_col3:
                 delete_task_click = st.form_submit_button("Delete Task", key="btn_delete_task", use_container_width=True)
                 if delete_task_click:
                     st.session_state.show_delete_dropdown = True
                     st.session_state.show_move_dropdowns = False
                     st.session_state.force_expand_list = True
 
-            with row2_col2:
+            with btn_col4:
                 black_btn_label = "Yes, All" if st.session_state.confirm_delete_list else "Delete List"
                 delete_list_click = st.form_submit_button(black_btn_label, key="btn_delete_list", use_container_width=True)
                 if delete_list_click:
@@ -201,43 +196,7 @@ if st.session_state.mode == "adding":
                         st.session_state.show_move_dropdowns = False
                         save_tasks_to_browser()
                         st.rerun()
-
-            if submit_task:
-                task_text_cleaned = task_text.strip()
-                if task_text_cleaned != "":
-                    if len(st.session_state.tasks) < LIMIT:
-                        task_data = {
-                            "name": task_text_cleaned,
-                            "prereq": prereq_text.strip() if prereq_text.strip() else None
-                        }
-                        st.session_state.tasks.append(task_data)
-                        save_tasks_to_browser()
-                        st.session_state.show_delete_dropdown = False
-                        st.session_state.show_move_dropdowns = False
-                        st.rerun()
-                    else:
-                        st.sidebar.error(f"You have reached the task limit of {LIMIT}!")
-                else:
-                    st.sidebar.warning("Please type a task name first!")
-
-        if st.session_state.confirm_delete_list:
-            st.html("""
-                <style>
-                button.giant-goback-btn {
-                    font-size: 24px !important;
-                    padding: 16px 32px !important;
-                    height: auto !important;
-                    width: 100% !important;
-                }
-                </style>
-            """)
-            if st.button("Go Back", key="go_back_btn"):
-                st.session_state.confirm_delete_list = False
-                st.session_state.show_delete_dropdown = False
-                st.session_state.show_move_dropdowns = False
-                st.rerun()
-            st.html("<script>document.getElementById('root').querySelector('button:has(div:contains(\"Go Back\"))').classList.add('giant-goback-btn');</script>")
-
+                        
         # --- MOVE TASK DROPDOWNS ---
         if st.session_state.show_move_dropdowns and len(st.session_state.tasks) > 1:
             st.markdown("---")
