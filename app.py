@@ -61,39 +61,40 @@ st.html(f"""
 # ==============================================================================
 # 🍪 BROWSER COOKIE CONFIGURATION (Ensures private, permanent user lists)
 # ==============================================================================
-# Initialize the browser cookie controller
-controller = CookieController()
+# Initialize the browser cookie controller safely inside session state
+if "cookie_controller" not in st.session_state:
+    st.session_state.cookie_controller = CookieController()
+
+controller = st.session_state.cookie_controller
 
 def load_tasks_from_browser():
     """Reads the private task list stored in the visitor's browser cookies."""
     try:
         saved_cookie = controller.get('user_task_list')
         if saved_cookie:
-            # Decode the stored JSON string back into a Python list, and signal True (Ready)
             return json.loads(saved_cookie), True
-        return [], True  # No cookie found, but the controller is ready and empty
+        return [], True  # Controller is ready, cookie is empty
     except TypeError:
-        # The cookie controller isn't fully initialized yet, signal False (Not Ready)
-        return [], False
+        return [], False # Controller is not ready yet
     except Exception:
         return [], True
 
 def save_tasks_to_browser():
     """Saves the current list directly into the visitor's browser cookies."""
     try:
-        # Convert the task list to a text string and store it for up to 30 days
         json_str = json.dumps(st.session_state.tasks)
         controller.set('user_task_list', json_str, max_age=2592000)
     except Exception as e:
         st.sidebar.error(f"Storage Error: {e}")
 
-# Read and initialize the private list on the very first page load with a safety switch
+# Read and initialize the private list safely on the very first page load
 if "cookie_loaded" not in st.session_state:
     st.session_state.cookie_loaded = False
 
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
 
+# Fetch tasks if they haven't been successfully pulled from the browser yet
 if not st.session_state.cookie_loaded:
     saved_tasks, controller_ready = load_tasks_from_browser()
     if controller_ready:
@@ -101,9 +102,9 @@ if not st.session_state.cookie_loaded:
         st.session_state.cookie_loaded = True
         st.rerun()
     else:
-        # If the browser handshake isn't complete yet, pause briefly and try again
-        st.html("<div style='display:none;'></div>")
-        st.rerun()
+        # Instead of st.rerun(), let the component naturally render and connect
+        st.info("⚡ Waking up secure browser storage... Please wait a brief moment.")
+        st.stop()
 # ==============================================================================
 
 # Title is only shown when building the list now
@@ -178,7 +179,7 @@ if st.session_state.mode == "adding":
             st.html(f"<div style='color: gray; font-family: {FONT_FAMILY};'>What must be completed first? (Optional)</div>")
             prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
-            # With the column now twice as wide, we can return to a clean 4-column row!
+            # Clean 4-column row layout for button alignment
             btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
             
             with btn_col1:
