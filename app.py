@@ -5,6 +5,7 @@ from streamlit_cookies_controller import CookieController
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
+
 # ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION (Change your fonts and colors here!)
 # ==============================================================================
@@ -86,27 +87,23 @@ def save_tasks_to_browser():
     except Exception as e:
         st.sidebar.error(f"Storage Error: {e}")
 
-# ==============================================================================
-# Read and initialize the private list on the very first page load
-# ==============================================================================
-if "cookies_initialized" not in st.session_state:
-    st.session_state.cookies_initialized = False
+# Read and initialize the private list on the very first page load with a safety switch
+if "cookie_loaded" not in st.session_state:
+    st.session_state.cookie_loaded = False
 
-# ==============================================================================
-# Read and initialize the private list on the very first page load
-# ==============================================================================
 if "tasks" not in st.session_state:
+    st.session_state.tasks = []
+
+if not st.session_state.cookie_loaded:
     saved_tasks, controller_ready = load_tasks_from_browser()
-    
     if controller_ready:
         st.session_state.tasks = saved_tasks
-    else:
-        # If the browser hasn't handed over the data yet, pause for a frame and try again
-        st.write("") 
+        st.session_state.cookie_loaded = True
         st.rerun()
-# ==============================================================================        
-    st.session_state.tasks = load_tasks_from_browser()
-# ==============================================================================
+    else:
+        # If the browser handshake isn't complete yet, pause briefly and try again
+        st.html("<div style='display:none;'></div>")
+        st.rerun()
 # ==============================================================================
 
 # Title is only shown when building the list now
@@ -216,17 +213,15 @@ if st.session_state.mode == "adding":
                         st.session_state.show_move_dropdowns = False
                         save_tasks_to_browser()
                         st.rerun()
+
             # --- PROCESS FORM SUBMISSION ---
             if submit_task:
                 if task_text.strip() != "":
-                    # Ensure we haven't hit the arbitrary task limit
                     if len(st.session_state.tasks) < LIMIT:
-                        # Create the new task dictionary object
                         new_task = {
                             "name": task_text.strip(),
                             "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
                         }
-                        # Append to session state and update browser cookies
                         st.session_state.tasks.append(new_task)
                         save_tasks_to_browser()
                         st.session_state.confirm_delete_list = False
@@ -253,14 +248,13 @@ if st.session_state.mode == "adding":
                 to_num = st.selectbox(label="To Position", options=["Choose..."] + task_numbers, key="move_to_drop", label_visibility="collapsed")
             
             with move_col3:
-                st.html("<div style='margin-top: 24px;'></div>") # Aligns button vertically with dropdowns
+                st.html("<div style='margin-top: 24px;'></div>") 
                 if st.button("Confirm Move", key="btn_confirm_move", use_container_width=True):
                     if from_num != "Choose..." and to_num != "Choose...":
                         if from_num != to_num:
                             from_idx = int(from_num) - 1
                             to_idx = int(to_num) - 1
                             
-                            # Pop the task out of the list and slide it into its new index position
                             moved_task = st.session_state.tasks.pop(from_idx)
                             st.session_state.tasks.insert(to_idx, moved_task)
                             
