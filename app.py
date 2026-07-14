@@ -2,7 +2,9 @@ import streamlit as st
 import json
 import random
 from streamlit_cookies_controller import CookieController
-#
+
+# 🚀 Unlocks the entire width of your monitor, removing restricted side margins
+st.set_page_config(layout="wide")
 # ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION (Change your fonts and colors here!)
 # ==============================================================================
@@ -125,14 +127,12 @@ AFFIRMATIONS = [
     "⚡ Pure efficiency! You're doing amazing!"
 ]
 
-# --- 2. MODE: ADDING TASKS ---
-# --- 2. MODE: ADDING TASKS ---
+   
 # --- 2. MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
     
-    # We changed the ratio to [2, 2.4] to give the form column double its previous width,
-    # making text inputs wide and allowing buttons to fit on a single horizontal row.
-    left_col, right_col = st.columns([2, 2.4], gap="large")
+    # Perfectly balanced for wide mode: generous task list, spacious flat button form
+    left_col, right_col = st.columns([1.5, 1.2], gap="large")
 
     with left_col:
         st.html(f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List</h3>")
@@ -196,7 +196,7 @@ if st.session_state.mode == "adding":
                         st.session_state.show_move_dropdowns = False
                         save_tasks_to_browser()
                         st.rerun()
-                        
+
         # --- MOVE TASK DROPDOWNS ---
         if st.session_state.show_move_dropdowns and len(st.session_state.tasks) > 1:
             st.markdown("---")
