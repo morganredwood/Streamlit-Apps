@@ -16,26 +16,26 @@ COLOR_MOVE_TASK = "blue"
 COLOR_DELETE_TASK = "red"
 COLOR_DELETE_LIST = "black"
 
-# Bulletproof targeting using Streamlit's element-key attributes
+# Modern Streamlit key-targeting CSS injection
 st.html(f"""
     <style>
     /* 1. Add Task Button */
-    div[element-to-capture="btn_add"] button p {{
+    div:has(div[data-testid="stWidgetProps"] script[id="btn_add"]) button p {{
         color: {COLOR_ADD_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     /* 2. Move Task Button */
-    div[element-to-capture="btn_move"] button p {{
+    div:has(div[data-testid="stWidgetProps"] script[id="btn_move"]) button p {{
         color: {COLOR_MOVE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     /* 3. Delete Task Button */
-    div[element-to-capture="btn_delete_task"] button p {{
+    div:has(div[data-testid="stWidgetProps"] script[id="btn_delete_task"]) button p {{
         color: {COLOR_DELETE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
     /* 4. Delete List Button */
-    div[element-to-capture="btn_delete_list"] button p {{
+    div:has(div[data-testid="stWidgetProps"] script[id="btn_delete_list"]) button p {{
         color: {COLOR_DELETE_LIST} !important;
         font-family: {FONT_FAMILY} !important;
     }}
