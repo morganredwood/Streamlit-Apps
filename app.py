@@ -343,7 +343,7 @@ elif st.session_state.mode == "working":
         st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {'Georgia'};'>{current_task['name']}</h1>")
         
         if current_task['prereq']:
-            st.warning(f"⚠️ **You need to finish this task first:** \n **{current_task['prereq']}**")
+            st.warning(f"⚠️ **You need to finish this task first:** \n\n {current_task['prereq']}")
         
         st.write("")
         st.write("")
