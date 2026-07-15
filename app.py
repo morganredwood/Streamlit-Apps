@@ -58,6 +58,9 @@ st.html(f"""
 # ==============================================================================
 # 🌐 MANUAL BACKUP ENGINE & WORKSPACE UTILITIES (REFRESH-PROOF)
 # ==============================================================================
+# Empty placeholder to safely handle old background sync calls in the script
+def save_tasks_to_browser(): pass
+
 # 1. Initialize our session states safely
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
