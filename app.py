@@ -56,80 +56,68 @@ st.html(f"""
     </style>
 """)
 # ==============================================================================
-
-
-# ==============================================================================
-# 🌐 BROWSER-BASED HIGH-CAPACITY STORAGE BRIDGE (WIPE-PROOF)
+# 🌐 MANUAL BACKUP ENGINE & WORKSPACE UTILITIES (REFRESH-PROOF)
 # ==============================================================================
 # 1. Initialize our session states safely
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
-if "storage_initialized" not in st.session_state:
-    st.session_state.storage_initialized = False
-if "sync_trigger" not in st.session_state:
-    st.session_state.sync_trigger = False
 
-def save_tasks_to_browser():
-    """Triggers the JavaScript side to save the current task state to browser storage."""
-    # Crucial safety check: Never write to storage if we haven't successfully loaded yet!
-    if st.session_state.storage_initialized:
-        st.session_state.sync_trigger = True
+# LIMIT remains locked at 500
+LIMIT = 500
 
-# 2. Inject the background bridge
-# This script reads from localStorage ONCE on startup. If it finds data, it sends it back.
-# If it finds nothing, it declares initialization complete so we can start writing.
-browser_data = components.html(
-    f"""
-    <script>
-    const STORAGE_KEY = "executive_function_tasks";
+# 2. Build the persistent Sidebar Utility Zone
+with st.sidebar:
+    # Noticeable warning banner that stays clear of the primary center workspace
+    st.warning("⚠️ **Refresh Warning:** Progress is stored in your current session. Please **Export List** before refreshing or closing the tab to save your work!")
     
-    // Send data from browser back to Streamlit
-    function sendToStreamlit(val) {{
-        window.parent.postMessage({{
-            type: "streamlit:setComponentValue",
-            value: val
-        }}, "*");
-    }}
+    st.markdown("---")
+    st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Utilities</h3>")
+    
+    # --- UTILITY 1: EXPORT LIST ---
+    if len(st.session_state.tasks) > 0:
+        # Convert the active task list into a formatted JSON string for download
+        json_string = json.dumps(st.session_state.tasks, indent=2)
+        
+        st.download_button(
+            label="📤 Export List",
+            data=json_string,
+            file_name="executive_tasks_backup.json",
+            mime="application/json",
+            use_container_width=True,
+            key="btn_export_sidebar"
+        )
+    else:
+        # Disable or hide export if there's nothing to save
+        st.button("📤 Export List (Empty)", disabled=True, use_container_width=True, key="btn_export_disabled")
 
-    // Check if we have an active save command from Python
-    const shouldSave = {json.dumps(st.session_state.sync_trigger)};
-    const initialized = {json.dumps(st.session_state.storage_initialized)};
+    # --- UTILITY 2: IMPORT LIST ---
+    uploaded_file = st.file_uploader(
+        label="📥 Import List (.json)",
+        type=["json"],
+        key="file_uploader_sidebar",
+        label_visibility="visible"
+    )
 
-    if (shouldSave && initialized) {{
-        // Save Python's current state to the browser
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({json.dumps(st.session_state.tasks)}));
-    }}
+    # Safely process the uploaded file if detected
+    if uploaded_file is not None:
+        try:
+            imported_data = json.load(uploaded_file)
+            
+            # Validation check: Ensure it's a list and doesn't exceed our 500 task hard cap
+            if isinstance(imported_data, list):
+                if len(imported_data) <= LIMIT:
+                    st.session_state.tasks = imported_data
+                    st.success("✅ List restored successfully!")
+                    # Brief pause or instant rerun to refresh the main screen UI seamlessly
+                    st.rerun()
+                else:
+                    st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
+            else:
+                st.error("❌ Invalid format: The JSON file structure is unrecognized.")
+        except Exception as e:
+            st.error("❌ Failed to read file. Make sure it's a valid backup .json.")
 
-    // Read the current local storage state to feed back into Python
-    try {{
-        const data = localStorage.getItem(STORAGE_KEY);
-        if (data) {{
-            sendToStreamlit({{ "status": "loaded", "data": JSON.parse(data) }});
-        }} else {{
-            sendToStreamlit({{ "status": "empty", "data": [] }});
-        }}
-    }} catch (e) {{
-        sendToStreamlit({{ "status": "error", "data": [] }});
-    }}
-    </script>
-    """,
-    height=0,
-)
-
-# 3. Process the bridge payload safely
-if browser_data is not None and not st.session_state.storage_initialized:
-    # Only load the data if the bridge successfully returned our startup payload
-    payload = browser_data
-    if isinstance(payload, dict) and "status" in payload:
-        if payload["status"] in ["loaded", "empty"]:
-            st.session_state.tasks = payload["data"]
-            st.session_state.storage_initialized = True
-            st.rerun()  # Rerun once to make sure the UI displays the loaded tasks immediately
-
-# Reset the write trigger flag safely for the next interaction
-st.session_state.sync_trigger = False
 # ==============================================================================
-
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
@@ -379,4 +367,3 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_browser()
             st.rerun()
-            
