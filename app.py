@@ -94,30 +94,37 @@ with st.sidebar:
         st.button("📤 Export List (Empty)", disabled=True, use_container_width=True, key="btn_export_disabled")
 
     # --- UTILITY 2: IMPORT LIST ---
+    # Dynamic key tracking allows us to programmatically clear the uploader after a successful import
+    if "uploader_id" not in st.session_state:
+        st.session_state.uploader_id = 0
+    if "import_success" not in st.session_state:
+        st.session_state.import_success = False
+
     uploaded_file = st.file_uploader(
         label="📥 Import List (.json)",
         type=["json"],
-        key="file_uploader_sidebar",
+        key=f"file_uploader_{st.session_state.uploader_id}",
         label_visibility="visible"
     )
 
     # Safely process the uploaded file if detected
     if uploaded_file is not None:
-        # Use a native, cross-platform spinner to give visual feedback and prevent user interruption
         with st.spinner("⏳ Processing file and restoring your workspace... Please wait."):
             try:
                 imported_data = json.load(uploaded_file)
                 
-                # Validation check: Ensure it's a list and doesn't exceed our 500 task hard cap
                 if isinstance(imported_data, list):
                     if len(imported_data) <= LIMIT:
-                        # Fully commit the data to the state first
+                        # 1. Fully commit the imported data to your app state
                         st.session_state.tasks = imported_data
                         st.session_state.current_index = 0
                         st.session_state.mode = "adding"
                         
-                        # Show confirmation and immediately force a clean rerun to paint the UI
-                        st.success("✅ List restored successfully!")
+                        # 2. Set a flag to show our success banner on the next clean run
+                        st.session_state.import_success = True
+                        
+                        # 3. Change the uploader ID. This forces Streamlit to reset the widget completely clear
+                        st.session_state.uploader_id += 1
                         st.rerun()
                     else:
                         st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
@@ -125,7 +132,13 @@ with st.sidebar:
                     st.error("❌ Invalid format: The JSON file structure is unrecognized.")
             except Exception as e:
                 st.error("❌ Failed to read file. Make sure it's a valid backup .json.")
-                
+
+    # Render the success banner cleanly only after the uploader loop has been broken
+    if st.session_state.import_success:
+        st.success("✅ List restored successfully!")
+        # Clear the success banner flag on any subsequent user click/interaction
+        st.session_state.import_success = False
+                    
 # ==============================================================================
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
