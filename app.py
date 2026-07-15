@@ -103,23 +103,29 @@ with st.sidebar:
 
     # Safely process the uploaded file if detected
     if uploaded_file is not None:
-        try:
-            imported_data = json.load(uploaded_file)
-            
-            # Validation check: Ensure it's a list and doesn't exceed our 500 task hard cap
-            if isinstance(imported_data, list):
-                if len(imported_data) <= LIMIT:
-                    st.session_state.tasks = imported_data
-                    st.success("✅ List restored successfully!")
-                    # Brief pause or instant rerun to refresh the main screen UI seamlessly
-                    st.rerun()
+        # Use a native, cross-platform spinner to give visual feedback and prevent user interruption
+        with st.spinner("⏳ Processing file and restoring your workspace... Please wait."):
+            try:
+                imported_data = json.load(uploaded_file)
+                
+                # Validation check: Ensure it's a list and doesn't exceed our 500 task hard cap
+                if isinstance(imported_data, list):
+                    if len(imported_data) <= LIMIT:
+                        # Fully commit the data to the state first
+                        st.session_state.tasks = imported_data
+                        st.session_state.current_index = 0
+                        st.session_state.mode = "adding"
+                        
+                        # Show confirmation and immediately force a clean rerun to paint the UI
+                        st.success("✅ List restored successfully!")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
                 else:
-                    st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
-            else:
-                st.error("❌ Invalid format: The JSON file structure is unrecognized.")
-        except Exception as e:
-            st.error("❌ Failed to read file. Make sure it's a valid backup .json.")
-
+                    st.error("❌ Invalid format: The JSON file structure is unrecognized.")
+            except Exception as e:
+                st.error("❌ Failed to read file. Make sure it's a valid backup .json.")
+                
 # ==============================================================================
 # Title is only shown when building the list now
 if "mode" in st.session_state and st.session_state.mode == "adding":
