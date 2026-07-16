@@ -83,7 +83,7 @@ if not st.session_state.loaded_from_browser:
         st.query_params.clear()
         st.rerun()
     else:
-        # Inject invisible iframe that retrieves tasks from IndexedDB and updates the parent URL
+        # Standard raw string prevents Python f-string parser from hitting JS curly braces
         components.html(
             """
             <script>
@@ -113,8 +113,9 @@ if not st.session_state.loaded_from_browser:
 def save_tasks_to_browser():
     """Serializes st.session_state.tasks and saves it directly to browser IndexedDB storage."""
     tasks_json = json.dumps(st.session_state.tasks)
-    components.html(
-        f"""
+    
+    # Using standard .replace() substitution to guarantee Python ignores the JS curly braces
+    js_template = """
         <script>
         const dbRequest = indexedDB.open("ExecutiveAssistantDB", 1);
         dbRequest.onupgradeneeded = function(e) {
@@ -123,13 +124,14 @@ def save_tasks_to_browser():
         dbRequest.onsuccess = function(e) {
             const db = e.target.result;
             const transaction = db.transaction(["tasks_store"], "readwrite");
-            transaction.objectStore("tasks_store").put({{ id: "current_list", data: {tasks_json} }});
+            transaction.objectStore("tasks_store").put({ id: "current_list", data: TASK_DATA_PLACEHOLDER });
         };
         </script>
-        """,
-        height=0,
-        width=0
-    )
+    """
+    
+    # Inject the serialized list safely
+    js_code = js_template.replace("TASK_DATA_PLACEHOLDER", tasks_json)
+    components.html(js_code, height=0, width=0)
 
 # ==============================================================================
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
