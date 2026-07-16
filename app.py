@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import random
+import streamlit.components.v1 as components
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
@@ -18,7 +19,6 @@ COLOR_MOVE_TASK = "blue"
 COLOR_DELETE_TASK = "red"
 COLOR_DELETE_LIST = "black"
 
-# Bulletproof targeting using native Streamlit key classes
 st.html(f"""
     <style>
     /* 1. Add Task Button */
@@ -59,24 +59,23 @@ st.html(f"""
 # ==============================================================================
 LIMIT = 500  # Hard locked cap capacity
 
-# Initialize state variables
+# Initialize Python Session State
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
 
 if "loaded_from_browser" not in st.session_state:
     st.session_state.loaded_from_browser = False
 
-# --- LOCALSTORAGE WRITER ---
+# --- BULLETPROOF LOCALSTORAGE WRITER ---
 def save_tasks_to_browser():
-    """Serializes tasks and pushes them directly into client-side localStorage.
-    CRITICAL: Never write back to the browser if we are still waiting for a load!"""
-    if not st.session_state.get("loaded_from_browser", False):
-        return  # VAULT LOCK: Do not overwrite browser storage with empty lists during loads
+    """Pushes current session state tasks directly to the browser's localStorage.
+    Only runs if we have completed our initial load to prevent overwriting with blank states."""
+    if not st.session_state.loaded_from_browser:
+        return
         
     tasks_json = json.dumps(st.session_state.tasks)
     escaped_json = tasks_json.replace("\\", "\\\\").replace("'", "\\'")
     
-    # Push to localStorage instantly
     st.html(
         f"""
         <script>
@@ -86,25 +85,11 @@ def save_tasks_to_browser():
         unsafe_allow_javascript=True
     )
 
-# --- REFRESH SENSOR ---
-# This hidden input detects if the browser window has been physically reloaded (manual refresh)
-refresh_detected = st.text_input("refresh_sensor", value="", key="refresh_sensor_input", label_visibility="collapsed")
-
-# Hide the refresh sensor input field completely
-st.html("""
-    <style>
-    div[data-testid="stTextInput"]:has(input[aria-label="refresh_sensor"]) {
-        display: none !important;
-    }
-    </style>
-""")
-
-if refresh_detected == "manual_refresh":
-    st.session_state.loaded_from_browser = False
-
-# --- SAFE LOCALSTORAGE LOADER (With Manual Refresh Interceptor) ---
+# --- REFRESH AND LOAD COMPONENT ---
+# This invisible component handles the handshake directly with Streamlit's backend.
+# It reads the localStorage, and passes it to Python via a hidden input element.
 if not st.session_state.loaded_from_browser:
-    # Render custom CSS to ensure the transfer text-input remains totally invisible
+    # Invisible input element for receiving data from JS
     st.html("""
         <style>
         div[data-testid="stTextInput"]:has(input[aria-label="sync_transfer"]) {
@@ -112,11 +97,9 @@ if not st.session_state.loaded_from_browser:
         }
         </style>
     """)
-    
-    # 1. Create the invisible text input
     sync_input = st.text_input("sync_transfer", value="", key="sync_transfer_input", label_visibility="collapsed")
     
-    # 2. Process Handshake Verification
+    # Process the incoming payload
     if sync_input and sync_input.strip() != "":
         try:
             parsed_data = json.loads(sync_input)
@@ -125,71 +108,46 @@ if not st.session_state.loaded_from_browser:
                 st.session_state.loaded_from_browser = True
                 st.rerun()
         except Exception:
-            # If JSON parsing fails (e.g. truncated data), we IGNORE it and let the browser try again
             pass
-            
-    # If we get here, either we haven't received data yet or it was blank/corrupted. We wait.
+
+    # Inject the transfer script
     st.html(
         """
         <script>
-        // Refresh Sensor: If sessionStorage doesn't have our run token, this is a clean/manual refresh
-        if (!sessionStorage.getItem("app_run_active")) {
-            const sensor = document.querySelectorAll('input[aria-label="refresh_sensor"]');
-            if (sensor.length > 0) {
-                sessionStorage.setItem("app_run_active", "true");
-                const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                nativeSetter.call(sensor[0], "manual_refresh");
-                sensor[0].dispatchEvent(new Event('input', { bubbles: true }));
-                
-                // Submit trigger
-                const enterEvent = new KeyboardEvent('keydown', {
-                    bubbles: true, cancelable: true, key: 'Enter', code: 'Enter', keyCode: 13
-                });
-                sensor[0].dispatchEvent(enterEvent);
-            }
-        }
-
         let attempts = 0;
         const checkExist = setInterval(() => {
             attempts++;
             const inputs = document.querySelectorAll('input[aria-label="sync_transfer"]');
             
             if (inputs.length > 0) {
+                clearInterval(checkExist);
                 const inputEl = inputs[0];
                 const saved = localStorage.getItem("executive_tasks_list");
-                
-                // If localStorage has nothing, initialize with empty list
                 const dataToSend = saved ? saved : "[]";
                 
-                // Only write if the field is currently empty to prevent recursion loops
                 if (inputEl.value !== dataToSend) {
-                    // Force the raw input element update to bypass React's virtual DOM binding issues
                     const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
                     nativeInputValueSetter.call(inputEl, dataToSend);
                     
-                    // Emit change event so Streamlit hooks up the React listeners
                     const event = new Event('input', { bubbles: true });
                     inputEl.dispatchEvent(event);
                     
-                    // Fire submission via Enter Key
                     const enterEvent = new KeyboardEvent('keydown', {
                         bubbles: true, cancelable: true, key: 'Enter', code: 'Enter', keyCode: 13
                     });
                     inputEl.dispatchEvent(enterEvent);
                 }
-                
-                // Keep checking to ensure the message was received; clear interval after 2 seconds (40 attempts)
-                if (attempts > 40) {
-                    clearInterval(checkExist);
-                }
             }
-        }, 50);
+            if (attempts > 100) {
+                clearInterval(checkExist);
+            }
+        }, 30);
         </script>
         """,
         unsafe_allow_javascript=True
     )
     
-    # Display a clean, polite status indicator during the handshake
+    # Display a clean, polite loading status
     st.html(f"""
         <div style="text-align: center; margin-top: 15%; font-family: {FONT_FAMILY}; color: #555555;">
             <h2>⚙️ Restoring Workspace...</h2>
@@ -197,20 +155,6 @@ if not st.session_state.loaded_from_browser:
         </div>
     """)
     st.stop()
-
-# --- INTERNAL STATE CLEANUP ---
-# Once loaded, we clear the browser's temporary refresh sensor input value so it doesn't loop
-if refresh_detected == "manual_refresh":
-    st.html("""
-        <script>
-        const sensor = document.querySelectorAll('input[aria-label="refresh_sensor"]');
-        if (sensor.length > 0) {
-            const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-            nativeSetter.call(sensor[0], "");
-            sensor[0].dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        </script>
-    """, unsafe_allow_javascript=True)
 
 # ==============================================================================
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
@@ -269,7 +213,7 @@ with st.sidebar:
                         st.session_state.mode = "adding"
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
-                        save_tasks_to_browser()  # Save changes instantly to localStorage
+                        save_tasks_to_browser()  # INSTANTLY SAVE TO BROWSER
                         st.rerun()
                     else:
                         st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
@@ -277,19 +221,19 @@ with st.sidebar:
                 # --- PROCESS ACTION: COMBINE ---
                 elif combine_clicked:
                     if current_count == 0:
-                        st.sidebar.warning("⚠️ Your task list is currently empty. You must enter a task first in order to combine the current list with an imported list.")
+                        st.sidebar.warning("⚠️ Your task list is currently empty. You must enter a task first in order to combine.")
                     elif (current_count + num_imported) > LIMIT:
-                        st.sidebar.error("❌ Unable to import this saved list in its current state because it will cause your list to exceed the total task limit.")
+                        st.sidebar.error("❌ Unable to import: combined count exceeds limit.")
                     else:
                         st.session_state.tasks.extend(imported_data)
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
-                        save_tasks_to_browser()  # Save updated combined list instantly to localStorage
+                        save_tasks_to_browser()  # INSTANTLY SAVE TO BROWSER
                         st.rerun()
             else:
                 st.error("❌ Invalid format: The JSON file structure is unrecognized.")
         except Exception as e:
-            st.error("❌ Failed to read file. Make sure it's a valid backup .json.")
+            st.error("❌ Failed to read file.")
 
     if st.session_state.import_success:
         st.success("✅ List restored successfully!")
@@ -355,7 +299,6 @@ if st.session_state.mode == "adding":
     with right_col:
         st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
         
-        # Preserve cap count display format
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
@@ -365,7 +308,6 @@ if st.session_state.mode == "adding":
             st.html(f"<div style='color: gray; font-family: {FONT_FAMILY};'>What must be completed first? (Optional)</div>")
             prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
 
-            # Clean 4-column row layout for button alignment
             btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
             
             with btn_col1:
@@ -401,7 +343,6 @@ if st.session_state.mode == "adding":
                         save_tasks_to_browser()
                         st.rerun()
 
-            # --- PROCESS FORM SUBMISSION ---
             if submit_task:
                 if task_text.strip() != "":
                     if len(st.session_state.tasks) < LIMIT:
