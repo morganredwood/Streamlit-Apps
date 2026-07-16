@@ -82,8 +82,8 @@ if not st.session_state.loaded_from_browser:
         st.query_params.clear()
         st.rerun()
     else:
-        # st.iframe safely runs raw HTML/JS scripts without f-string conflicts
-        st.iframe(
+        # Using st.html to safely load variables from IndexedDB on initial load
+        st.html(
             """
             <script>
             const dbRequest = indexedDB.open("ExecutiveAssistantDB", 1);
@@ -103,8 +103,7 @@ if not st.session_state.loaded_from_browser:
             };
             </script>
             """,
-            height=0,
-            width=0
+            unsafe_allow_javascript=True
         )
         st.stop()  # Wait for startup browser handshake to complete before rendering anything
 
@@ -129,7 +128,7 @@ def save_tasks_to_browser():
     """
     
     js_code = js_template.replace("TASK_DATA_PLACEHOLDER", tasks_json)
-    st.iframe(js_code, height=0, width=0)
+    st.html(js_code, unsafe_allow_javascript=True)
 
 # ==============================================================================
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
