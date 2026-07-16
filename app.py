@@ -1,9 +1,13 @@
 import streamlit as st
 import json
 import random
+from streamlit_cookies_controller import CookieController
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
+
+# Initialize the Cookie Controller
+controller = CookieController()
 
 # ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION
@@ -55,80 +59,34 @@ st.html(f"""
 """)
 
 # ==============================================================================
-# 🌐 LOCAL BROWSER PERSISTENCE ENGINE (INDEXEDDB BRIDGE)
+# 🌐 LOCAL BROWSER PERSISTENCE ENGINE (COOKIE-BASED)
 # ==============================================================================
 LIMIT = 500  # Hard locked cap capacity
 
-# Initialize startup check state
-if "loaded_from_browser" not in st.session_state:
-    st.session_state.loaded_from_browser = False
-
+# Initialize state variables
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
 
-# --- INDEXEDDB LOADER TRIGGER ---
-# If we have not loaded local browser data yet, check for incoming query parameters
-if not st.session_state.loaded_from_browser:
-    # Read incoming data if the browser iframe sent it via URL query parameters
-    if "load_sync" in st.query_params:
-        try:
-            raw_data = st.query_params["load_sync"]
-            if raw_data and raw_data != "null":
-                st.session_state.tasks = json.loads(raw_data)
-        except Exception as e:
-            st.write(f"<!-- Persistence Load Exception: {str(e)} -->")
-        st.session_state.loaded_from_browser = True
-        # Clear temporary query parameters immediately to keep URL clean
-        st.query_params.clear()
-        st.rerun()
-    else:
-        # Using st.html to safely load variables from IndexedDB on initial load
-        st.html(
-            """
-            <script>
-            const dbRequest = indexedDB.open("ExecutiveAssistantDB", 1);
-            dbRequest.onupgradeneeded = function(e) {
-                e.target.result.createObjectStore("tasks_store", { keyPath: "id" });
-            };
-            dbRequest.onsuccess = function(e) {
-                const db = e.target.result;
-                const transaction = db.transaction(["tasks_store"], "readonly");
-                const getRequest = transaction.objectStore("tasks_store").get("current_list");
-                getRequest.onsuccess = function() {
-                    const savedTasks = getRequest.result ? JSON.stringify(getRequest.result.data) : "[]";
-                    const parentUrl = new URL(window.parent.location.href);
-                    parentUrl.searchParams.set("load_sync", savedTasks);
-                    window.parent.location.replace(parentUrl.toString());
-                };
-            };
-            </script>
-            """,
-            unsafe_allow_javascript=True
-        )
-        st.stop()  # Wait for startup browser handshake to complete before rendering anything
+if "loaded_from_browser" not in st.session_state:
+    st.session_state.loaded_from_browser = False
 
-# --- INDEXEDDB WRITER FUNCTION ---
+# --- COOKIE LOADER ENGINE ---
+# Automatically runs once on startup to grab saved tasks
+if not st.session_state.loaded_from_browser:
+    saved_cookie = controller.get("executive_tasks")
+    if saved_cookie:
+        try:
+            st.session_state.tasks = json.loads(saved_cookie)
+        except Exception as e:
+            pass
+    st.session_state.loaded_from_browser = True
+
+# --- COOKIE WRITER ENGINE ---
 def save_tasks_to_browser():
-    """Serializes st.session_state.tasks and saves it directly to browser IndexedDB storage."""
+    """Serializes st.session_state.tasks and saves it directly to browser cookies."""
     tasks_json = json.dumps(st.session_state.tasks)
-    
-    # We construct a template and replace the placeholder string dynamically
-    js_template = """
-        <script>
-        const dbRequest = indexedDB.open("ExecutiveAssistantDB", 1);
-        dbRequest.onupgradeneeded = function(e) {
-            e.target.result.createObjectStore("tasks_store", { keyPath: "id" });
-        };
-        dbRequest.onsuccess = function(e) {
-            const db = e.target.result;
-            const transaction = db.transaction(["tasks_store"], "readwrite");
-            transaction.objectStore("tasks_store").put({ id: "current_list", data: TASK_DATA_PLACEHOLDER });
-        };
-        </script>
-    """
-    
-    js_code = js_template.replace("TASK_DATA_PLACEHOLDER", tasks_json)
-    st.html(js_code, unsafe_allow_javascript=True)
+    # Saves cookie to the user's browser (valid for 30 days)
+    controller.set("executive_tasks", tasks_json, max_age=2592000)
 
 # ==============================================================================
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
@@ -187,7 +145,7 @@ with st.sidebar:
                         st.session_state.mode = "adding"
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
-                        save_tasks_to_browser()  # Save changes instantly to the browser db
+                        save_tasks_to_browser()  # Save changes instantly to browser
                         st.rerun()
                     else:
                         st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
@@ -202,7 +160,7 @@ with st.sidebar:
                         st.session_state.tasks.extend(imported_data)
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
-                        save_tasks_to_browser()  # Save updated combined list instantly to the browser db
+                        save_tasks_to_browser()  # Save updated combined list instantly to browser
                         st.rerun()
             else:
                 st.error("❌ Invalid format: The JSON file structure is unrecognized.")
