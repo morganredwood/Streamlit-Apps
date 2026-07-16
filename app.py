@@ -1,13 +1,9 @@
 import streamlit as st
 import json
 import random
-from streamlit_cookies_controller import CookieController
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
-
-# Initialize the Cookie Controller
-controller = CookieController()
 
 # ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION
@@ -59,7 +55,7 @@ st.html(f"""
 """)
 
 # ==============================================================================
-# 🌐 LOCAL BROWSER PERSISTENCE ENGINE (COOKIE-BASED)
+# 🌐 LOCAL BROWSER PERSISTENCE ENGINE (LOCALSTORAGE BRIDGE)
 # ==============================================================================
 LIMIT = 500  # Hard locked cap capacity
 
@@ -70,23 +66,52 @@ if "tasks" not in st.session_state:
 if "loaded_from_browser" not in st.session_state:
     st.session_state.loaded_from_browser = False
 
-# --- COOKIE LOADER ENGINE ---
-# Automatically runs once on startup to grab saved tasks
+# --- LOCALSTORAGE LOADER ---
+# On startup, run an invisible JS script to read localStorage and pass it back
 if not st.session_state.loaded_from_browser:
-    saved_cookie = controller.get("executive_tasks")
-    if saved_cookie:
+    # Look for the returned task data from our javascript query parameter
+    if "load_sync" in st.query_params:
         try:
-            st.session_state.tasks = json.loads(saved_cookie)
-        except Exception as e:
+            raw_data = st.query_params["load_sync"]
+            if raw_data and raw_data != "null":
+                st.session_state.tasks = json.loads(raw_data)
+        except Exception:
             pass
-    st.session_state.loaded_from_browser = True
+        st.session_state.loaded_from_browser = True
+        st.query_params.clear()
+        st.rerun()
+    else:
+        # Ask localStorage for the data and bounce it back securely to our URL parameter once
+        st.html(
+            """
+            <script>
+            const savedTasks = localStorage.getItem("executive_tasks_list") || "[]";
+            const parentUrl = new URL(window.parent.location.href);
+            parentUrl.searchParams.set("load_sync", savedTasks);
+            window.parent.location.replace(parentUrl.toString());
+            </script>
+            """,
+            unsafe_allow_javascript=True
+        )
+        st.stop()  # Keep the screen clean while we fetch the load_sync parameters
 
-# --- COOKIE WRITER ENGINE ---
+# --- LOCALSTORAGE WRITER ---
 def save_tasks_to_browser():
-    """Serializes st.session_state.tasks and saves it directly to browser cookies."""
+    """Serializes tasks and pushes them directly into client-side localStorage."""
     tasks_json = json.dumps(st.session_state.tasks)
-    # Saves cookie to the user's browser (valid for 30 days)
-    controller.set("executive_tasks", tasks_json, max_age=2592000)
+    
+    # Safely escape backslashes and single quotes for our JS execution block
+    escaped_json = tasks_json.replace("\\", "\\\\").replace("'", "\\'")
+    
+    # Instantly sync to the browser client's localStorage
+    st.html(
+        f"""
+        <script>
+        localStorage.setItem("executive_tasks_list", '{escaped_json}');
+        </script>
+        """,
+        unsafe_allow_javascript=True
+    )
 
 # ==============================================================================
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
@@ -145,7 +170,7 @@ with st.sidebar:
                         st.session_state.mode = "adding"
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
-                        save_tasks_to_browser()  # Save changes instantly to browser
+                        save_tasks_to_browser()  # Save changes instantly to localStorage
                         st.rerun()
                     else:
                         st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
@@ -160,7 +185,7 @@ with st.sidebar:
                         st.session_state.tasks.extend(imported_data)
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
-                        save_tasks_to_browser()  # Save updated combined list instantly to browser
+                        save_tasks_to_browser()  # Save updated combined list instantly to localStorage
                         st.rerun()
             else:
                 st.error("❌ Invalid format: The JSON file structure is unrecognized.")
