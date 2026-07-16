@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import random
+import streamlit.components.v1 as components
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
@@ -66,44 +67,13 @@ if "tasks" not in st.session_state:
 if "loaded_from_browser" not in st.session_state:
     st.session_state.loaded_from_browser = False
 
-# --- LOCALSTORAGE LOADER ---
-# On startup, run a safe, sandboxed JS script to read localStorage and pass it back inside the iframe
-if not st.session_state.loaded_from_browser:
-    # Look for the returned task data from our internal iframe parameter
-    if "load_sync" in st.query_params:
-        try:
-            raw_data = st.query_params["load_sync"]
-            if raw_data and raw_data != "null":
-                st.session_state.tasks = json.loads(raw_data)
-        except Exception:
-            pass
-        st.session_state.loaded_from_browser = True
-        st.query_params.clear()
-        st.rerun()
-    else:
-        # Query local storage and redirect *only* the internal iframe's location, which browsers safely allow
-        st.html(
-            """
-            <script>
-            const savedTasks = localStorage.getItem("executive_tasks_list") || "[]";
-            const iframeUrl = new URL(window.location.href);
-            iframeUrl.searchParams.set("load_sync", savedTasks);
-            window.location.replace(iframeUrl.toString());
-            </script>
-            """,
-            unsafe_allow_javascript=True
-        )
-        st.stop()  # Keep the screen clean while we complete the sync handshake
-
 # --- LOCALSTORAGE WRITER ---
 def save_tasks_to_browser():
     """Serializes tasks and pushes them directly into client-side localStorage."""
     tasks_json = json.dumps(st.session_state.tasks)
-    
-    # Safely escape backslashes and single quotes for our JS execution block
     escaped_json = tasks_json.replace("\\", "\\\\").replace("'", "\\'")
     
-    # Instantly sync to the browser client's localStorage
+    # Push to localStorage instantly
     st.html(
         f"""
         <script>
@@ -112,6 +82,38 @@ def save_tasks_to_browser():
         """,
         unsafe_allow_javascript=True
     )
+
+# --- LOCALSTORAGE LOADER ---
+# On initial startup or a hard refresh, run a silent receiver component
+if not st.session_state.loaded_from_browser:
+    # This component reads from localStorage and sends a custom event with the data
+    receiver_html = """
+    <script>
+    // Wait for the parent Streamlit app to be ready, then send the stored data
+    window.addEventListener("DOMContentLoaded", function() {
+        const saved = localStorage.getItem("executive_tasks_list") || "[]";
+        // Send data back to Python via Streamlit's communication channel
+        window.parent.postMessage({
+            type: "streamlit:setComponentValue",
+            value: saved
+        }, "*");
+    });
+    </script>
+    """
+    # Create an invisible 0px component to execute our Javascript receiver
+    raw_received = components.html(receiver_html, height=0, width=0)
+    
+    # Once the component communicates back, update session state and rerun
+    if raw_received:
+        try:
+            st.session_state.tasks = json.loads(raw_received)
+        except Exception:
+            st.session_state.tasks = []
+        st.session_state.loaded_from_browser = True
+        st.rerun()
+    else:
+        # Keep loading screen clean while waiting for the handshake
+        st.stop()
 
 # ==============================================================================
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
@@ -256,6 +258,7 @@ if st.session_state.mode == "adding":
     with right_col:
         st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
         
+        # Preserve cap count display format
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
