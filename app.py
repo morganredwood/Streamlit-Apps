@@ -1,7 +1,6 @@
 import streamlit as st
 import json
 import random
-import streamlit.components.v1 as components
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
@@ -83,8 +82,8 @@ if not st.session_state.loaded_from_browser:
         st.query_params.clear()
         st.rerun()
     else:
-        # Standard raw string prevents Python f-string parser from hitting JS curly braces
-        components.html(
+        # st.iframe safely runs raw HTML/JS scripts without f-string conflicts
+        st.iframe(
             """
             <script>
             const dbRequest = indexedDB.open("ExecutiveAssistantDB", 1);
@@ -114,7 +113,7 @@ def save_tasks_to_browser():
     """Serializes st.session_state.tasks and saves it directly to browser IndexedDB storage."""
     tasks_json = json.dumps(st.session_state.tasks)
     
-    # Using standard .replace() substitution to guarantee Python ignores the JS curly braces
+    # We construct a template and replace the placeholder string dynamically
     js_template = """
         <script>
         const dbRequest = indexedDB.open("ExecutiveAssistantDB", 1);
@@ -129,9 +128,8 @@ def save_tasks_to_browser():
         </script>
     """
     
-    # Inject the serialized list safely
     js_code = js_template.replace("TASK_DATA_PLACEHOLDER", tasks_json)
-    components.html(js_code, height=0, width=0)
+    st.iframe(js_code, height=0, width=0)
 
 # ==============================================================================
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
