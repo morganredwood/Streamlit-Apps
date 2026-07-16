@@ -82,7 +82,7 @@ def save_tasks_to_browser():
         unsafe_allow_javascript=True
     )
 
-# --- SAFE LOCALSTORAGE LOADER (Websocket/State Transfer) ---
+# --- SAFE LOCALSTORAGE LOADER (Websocket/State Transfer with Handshake Verification) ---
 if not st.session_state.loaded_from_browser:
     # Render custom CSS to ensure the transfer text-input remains totally invisible
     st.html("""
@@ -96,55 +96,70 @@ if not st.session_state.loaded_from_browser:
     # 1. Create the invisible text input
     sync_input = st.text_input("sync_transfer", value="", key="sync_transfer_input", label_visibility="collapsed")
     
-    # 2. If the JS has typed into the field, read it and clear this block
-    if sync_input:
+    # 2. Process Handshake Verification
+    if sync_input and sync_input.strip() != "":
         try:
-            st.session_state.tasks = json.loads(sync_input)
+            parsed_data = json.loads(sync_input)
+            if isinstance(parsed_data, list):
+                st.session_state.tasks = parsed_data
+                st.session_state.loaded_from_browser = True
+                st.rerun()
         except Exception:
-            st.session_state.tasks = []
-        st.session_state.loaded_from_browser = True
-        st.rerun()
-    else:
-        # 3. Inject JS to securely pull storage locally (no cross-origin window.parent calls)
-        st.html(
-            """
-            <script>
-            const checkExist = setInterval(() => {
-                // Querying local document securely handles iframe wrappers on Streamlit Cloud
-                const inputs = document.querySelectorAll('input[aria-label="sync_transfer"]');
-                if (inputs.length > 0) {
-                    clearInterval(checkExist);
-                    const inputEl = inputs[0];
-                    const saved = localStorage.getItem("executive_tasks_list") || "[]";
-                    
-                    // Force the raw input element update to bypass virtual DOM bindings
+            # If JSON parsing fails (e.g. truncated data), we IGNORE it and let the browser try again
+            pass
+            
+    # If we get here, either we haven't received data yet or it was blank/corrupted. We wait.
+    st.html(
+        """
+        <script>
+        let attempts = 0;
+        const checkExist = setInterval(() => {
+            attempts++;
+            const inputs = document.querySelectorAll('input[aria-label="sync_transfer"]');
+            
+            if (inputs.length > 0) {
+                const inputEl = inputs[0];
+                const saved = localStorage.getItem("executive_tasks_list");
+                
+                // If localStorage has nothing, initialize with empty list
+                const dataToSend = saved ? saved : "[]";
+                
+                // Only write if the field is currently empty to prevent recursion loops
+                if (inputEl.value !== dataToSend) {
+                    // Force the raw input element update to bypass React's virtual DOM binding issues
                     const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                    nativeInputValueSetter.call(inputEl, saved);
+                    nativeInputValueSetter.call(inputEl, dataToSend);
                     
-                    // Emit change event to Streamlit
+                    // Emit change event so Streamlit hooks up the React listeners
                     const event = new Event('input', { bubbles: true });
                     inputEl.dispatchEvent(event);
                     
-                    // Fire submission
+                    // Fire submission via Enter Key
                     const enterEvent = new KeyboardEvent('keydown', {
                         bubbles: true, cancelable: true, key: 'Enter', code: 'Enter', keyCode: 13
                     });
                     inputEl.dispatchEvent(enterEvent);
                 }
-            }, 50);
-            </script>
-            """,
-            unsafe_allow_javascript=True
-        )
-        
-        # Display a clean, polite status indicator during the microsecond hand-shake
-        st.html(f"""
-            <div style="text-align: center; margin-top: 15%; font-family: {FONT_FAMILY}; color: #555555;">
-                <h2>⚙️ Restoring Workspace...</h2>
-                <p>Retrieving your tasks securely from your browser storage.</p>
-            </div>
-        """)
-        st.stop()
+                
+                // Keep checking to ensure the message was received; clear interval after 2 seconds (40 attempts)
+                if (attempts > 40) {
+                    clearInterval(checkExist);
+                }
+            }
+        }, 50);
+        </script>
+        """,
+        unsafe_allow_javascript=True
+    )
+    
+    # Display a clean, polite status indicator during the handshake
+    st.html(f"""
+        <div style="text-align: center; margin-top: 15%; font-family: {FONT_FAMILY}; color: #555555;">
+            <h2>⚙️ Restoring Workspace...</h2>
+            <p>Retrieving your tasks securely from your browser storage.</p>
+        </div>
+    """)
+    st.stop()
 
 # ==============================================================================
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
