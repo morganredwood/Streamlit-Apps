@@ -7,14 +7,13 @@ import streamlit.components.v1 as components
 st.set_page_config(layout="wide")
 
 # ==============================================================================
-# 🎨 CENTRAL STYLE CONFIGURATION (Change your fonts and colors here!)
+# 🎨 CENTRAL STYLE CONFIGURATION
 # ==============================================================================
 TEXT_COLOR = "black"  
 FONT_FAMILY = "Georgia"  
 
 STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
 
-# 🎛️ BUTTON TEXT COLOR SWITCHES
 COLOR_ADD_TASK = "green"
 COLOR_MOVE_TASK = "blue"
 COLOR_DELETE_TASK = "red"
@@ -55,32 +54,92 @@ st.html(f"""
     }}
     </style>
 """)
-# ==============================================================================
-# 🌐 MANUAL BACKUP ENGINE & WORKSPACE UTILITIES (REFRESH-PROOF)
-# ==============================================================================
-# Empty placeholder to safely handle old background sync calls in the script
-def save_tasks_to_browser(): pass
 
-# 1. Initialize our session states safely
+# ==============================================================================
+# 🌐 LOCAL BROWSER PERSISTENCE ENGINE (INDEXEDDB BRIDGE)
+# ==============================================================================
+LIMIT = 500  # Hard locked cap capacity
+
+# Initialize startup check state
+if "loaded_from_browser" not in st.session_state:
+    st.session_state.loaded_from_browser = False
+
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
 
-# LIMIT remains locked at 500
-LIMIT = 500
+# --- INDEXEDDB LOADER TRIGGER ---
+# If we have not loaded local browser data yet, check for incoming query parameters
+if not st.session_state.loaded_from_browser:
+    # Read incoming data if the browser iframe sent it via URL query parameters
+    if "load_sync" in st.query_params:
+        try:
+            raw_data = st.query_params["load_sync"]
+            if raw_data and raw_data != "null":
+                st.session_state.tasks = json.loads(raw_data)
+        except Exception as e:
+            st.write(f"<!-- Persistence Load Exception: {str(e)} -->")
+        st.session_state.loaded_from_browser = True
+        # Clear temporary query parameters immediately to keep URL clean
+        st.query_params.clear()
+        st.rerun()
+    else:
+        # Inject invisible iframe that retrieves tasks from IndexedDB and updates the parent URL
+        components.html(
+            """
+            <script>
+            const dbRequest = indexedDB.open("ExecutiveAssistantDB", 1);
+            dbRequest.onupgradeneeded = function(e) {
+                e.target.result.createObjectStore("tasks_store", { keyPath: "id" });
+            };
+            dbRequest.onsuccess = function(e) {
+                const db = e.target.result;
+                const transaction = db.transaction(["tasks_store"], "readonly");
+                const getRequest = transaction.objectStore("tasks_store").get("current_list");
+                getRequest.onsuccess = function() {
+                    const savedTasks = getRequest.result ? JSON.stringify(getRequest.result.data) : "[]";
+                    const parentUrl = new URL(window.parent.location.href);
+                    parentUrl.searchParams.set("load_sync", savedTasks);
+                    window.parent.location.replace(parentUrl.toString());
+                };
+            };
+            </script>
+            """,
+            height=0,
+            width=0
+        )
+        st.stop()  # Wait for startup browser handshake to complete before rendering anything
 
-# 2. Build the persistent Sidebar Utility Zone
+# --- INDEXEDDB WRITER FUNCTION ---
+def save_tasks_to_browser():
+    """Serializes st.session_state.tasks and saves it directly to browser IndexedDB storage."""
+    tasks_json = json.dumps(st.session_state.tasks)
+    components.html(
+        f"""
+        <script>
+        const dbRequest = indexedDB.open("ExecutiveAssistantDB", 1);
+        dbRequest.onupgradeneeded = function(e) {
+            e.target.result.createObjectStore("tasks_store", { keyPath: "id" });
+        };
+        dbRequest.onsuccess = function(e) {
+            const db = e.target.result;
+            const transaction = db.transaction(["tasks_store"], "readwrite");
+            transaction.objectStore("tasks_store").put({{ id: "current_list", data: {tasks_json} }});
+        };
+        </script>
+        """,
+        height=0,
+        width=0
+    )
+
+# ==============================================================================
+# 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
+# ==============================================================================
 with st.sidebar:
-    # Noticeable warning banner that stays clear of the primary center workspace
-    st.warning("⚠️ **Refresh Warning:** Progress is stored in your current session. Please **Export List** before refreshing or closing the tab to save your work!")
-    
-    st.markdown("---")
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Utilities</h3>")
     
     # --- UTILITY 1: EXPORT LIST ---
     if len(st.session_state.tasks) > 0:
-        # Convert the active task list into a formatted JSON string for download
         json_string = json.dumps(st.session_state.tasks, indent=2)
-        
         st.download_button(
             label="📤 Export List",
             data=json_string,
@@ -90,60 +149,74 @@ with st.sidebar:
             key="btn_export_sidebar"
         )
     else:
-        # Disable or hide export if there's nothing to save
         st.button("📤 Export List (Empty)", disabled=True, use_container_width=True, key="btn_export_disabled")
 
-    # --- UTILITY 2: IMPORT LIST ---
-    # Dynamic key tracking allows us to programmatically clear the uploader after a successful import
+    # --- UTILITY 2: DUAL IMPORT INTERFACE ---
     if "uploader_id" not in st.session_state:
         st.session_state.uploader_id = 0
     if "import_success" not in st.session_state:
         st.session_state.import_success = False
 
     uploaded_file = st.file_uploader(
-        label="📥 Import List (.json)",
+        label="📥 Select Saved List (.json)",
         type=["json"],
         key=f"file_uploader_{st.session_state.uploader_id}",
         label_visibility="visible"
     )
 
-    # Safely process the uploaded file if detected
     if uploaded_file is not None:
-        with st.spinner("⏳ Processing file and restoring your workspace... Please wait."):
-            try:
-                imported_data = json.load(uploaded_file)
+        col_replace, col_combine = st.columns(2)
+        
+        with col_replace:
+            replace_clicked = st.button("Upload: Replace", use_container_width=True)
+            
+        with col_combine:
+            combine_clicked = st.button("Upload: Combine", use_container_width=True)
+            
+        try:
+            imported_data = json.load(uploaded_file)
+            
+            if isinstance(imported_data, list):
+                num_imported = len(imported_data)
+                current_count = len(st.session_state.tasks)
                 
-                if isinstance(imported_data, list):
-                    if len(imported_data) <= LIMIT:
-                        # 1. Fully commit the imported data to your app state
+                # --- PROCESS ACTION: REPLACE ---
+                if replace_clicked:
+                    if num_imported <= LIMIT:
                         st.session_state.tasks = imported_data
                         st.session_state.current_index = 0
                         st.session_state.mode = "adding"
-                        
-                        # 2. Set a flag to show our success banner on the next clean run
                         st.session_state.import_success = True
-                        
-                        # 3. Change the uploader ID. This forces Streamlit to reset the widget completely clear
                         st.session_state.uploader_id += 1
+                        save_tasks_to_browser()  # Save changes instantly to the browser db
                         st.rerun()
                     else:
                         st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
-                else:
-                    st.error("❌ Invalid format: The JSON file structure is unrecognized.")
-            except Exception as e:
-                st.error("❌ Failed to read file. Make sure it's a valid backup .json.")
+                
+                # --- PROCESS ACTION: COMBINE ---
+                elif combine_clicked:
+                    if current_count == 0:
+                        st.sidebar.warning("⚠️ Your task list is currently empty. You must enter a task first in order to combine the current list with an imported list.")
+                    elif (current_count + num_imported) > LIMIT:
+                        st.sidebar.error("❌ Unable to import this saved list in its current state because it will cause your list to exceed the total task limit.")
+                    else:
+                        st.session_state.tasks.extend(imported_data)
+                        st.session_state.import_success = True
+                        st.session_state.uploader_id += 1
+                        save_tasks_to_browser()  # Save updated combined list instantly to the browser db
+                        st.rerun()
+            else:
+                st.error("❌ Invalid format: The JSON file structure is unrecognized.")
+        except Exception as e:
+            st.error("❌ Failed to read file. Make sure it's a valid backup .json.")
 
-    # Render the success banner cleanly only after the uploader loop has been broken
     if st.session_state.import_success:
         st.success("✅ List restored successfully!")
-        # Clear the success banner flag on any subsequent user click/interaction
         st.session_state.import_success = False
-                    
-# ==============================================================================
-# Title is only shown when building the list now
-if "mode" in st.session_state and st.session_state.mode == "adding":
-    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
 
+# ==============================================================================
+# 🗂️ STATE INITIALIZATIONS & CONSTANTS
+# ==============================================================================
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0  
 
@@ -165,9 +238,6 @@ if "force_expand_list" not in st.session_state:
 if "affirmation" not in st.session_state:
     st.session_state.affirmation = None
 
-# Safe high limit supported by native browser local storage
-LIMIT = 500
-
 AFFIRMATIONS = [
     "✨ Fantastic job getting that done!",
     "🎉 Way to cross that off your list!",
@@ -179,11 +249,10 @@ AFFIRMATIONS = [
     "⚡ Pure efficiency! You're doing amazing!"
 ]
 
-    
-# --- 2. MODE: ADDING TASKS ---
+# --- MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
+    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
     
-    # Perfectly balanced for wide mode: generous task list, spacious flat button form
     left_col, right_col = st.columns([1.5, 1.2], gap="large")
 
     with left_col:
@@ -204,6 +273,8 @@ if st.session_state.mode == "adding":
 
     with right_col:
         st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
+        
+        # Hard cap display format strictly preserved as requested
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
@@ -329,7 +400,7 @@ if st.session_state.mode == "adding":
                 st.rerun()
             st.html("</div>")
 
-# --- 3. MODE: WORKING ON TASKS ---
+# --- MODE: WORKING ON TASKS ---
 elif st.session_state.mode == "working":
     st.write("")
     st.write("")
@@ -389,3 +460,4 @@ elif st.session_state.mode == "working":
             st.session_state.affirmation = None
             save_tasks_to_browser()
             st.rerun()
+            
