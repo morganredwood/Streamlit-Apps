@@ -67,9 +67,9 @@ if "loaded_from_browser" not in st.session_state:
     st.session_state.loaded_from_browser = False
 
 # --- LOCALSTORAGE LOADER ---
-# On startup, run an invisible JS script to read localStorage and pass it back
+# On startup, run a safe, sandboxed JS script to read localStorage and pass it back inside the iframe
 if not st.session_state.loaded_from_browser:
-    # Look for the returned task data from our javascript query parameter
+    # Look for the returned task data from our internal iframe parameter
     if "load_sync" in st.query_params:
         try:
             raw_data = st.query_params["load_sync"]
@@ -81,19 +81,19 @@ if not st.session_state.loaded_from_browser:
         st.query_params.clear()
         st.rerun()
     else:
-        # Ask localStorage for the data and bounce it back securely to our URL parameter once
+        # Query local storage and redirect *only* the internal iframe's location, which browsers safely allow
         st.html(
             """
             <script>
             const savedTasks = localStorage.getItem("executive_tasks_list") || "[]";
-            const parentUrl = new URL(window.parent.location.href);
-            parentUrl.searchParams.set("load_sync", savedTasks);
-            window.parent.location.replace(parentUrl.toString());
+            const iframeUrl = new URL(window.location.href);
+            iframeUrl.searchParams.set("load_sync", savedTasks);
+            window.location.replace(iframeUrl.toString());
             </script>
             """,
             unsafe_allow_javascript=True
         )
-        st.stop()  # Keep the screen clean while we fetch the load_sync parameters
+        st.stop()  # Keep the screen clean while we complete the sync handshake
 
 # --- LOCALSTORAGE WRITER ---
 def save_tasks_to_browser():
@@ -256,7 +256,6 @@ if st.session_state.mode == "adding":
     with right_col:
         st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
         
-        # Hard cap display format strictly preserved as requested
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
