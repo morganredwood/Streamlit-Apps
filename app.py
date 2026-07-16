@@ -68,7 +68,11 @@ if "loaded_from_browser" not in st.session_state:
 
 # --- LOCALSTORAGE WRITER ---
 def save_tasks_to_browser():
-    """Serializes tasks and pushes them directly into client-side localStorage."""
+    """Serializes tasks and pushes them directly into client-side localStorage.
+    CRITICAL: Never write back to the browser if we are still waiting for a load!"""
+    if not st.session_state.get("loaded_from_browser", False):
+        return  # VAULT LOCK: Do not overwrite browser storage with empty lists during loads
+        
     tasks_json = json.dumps(st.session_state.tasks)
     escaped_json = tasks_json.replace("\\", "\\\\").replace("'", "\\'")
     
