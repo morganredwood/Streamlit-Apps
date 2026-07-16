@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import random
-import streamlit.components.v1 as components
+import html
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
@@ -68,28 +68,35 @@ if "loaded_from_browser" not in st.session_state:
 
 # --- BULLETPROOF LOCALSTORAGE WRITER ---
 def save_tasks_to_browser():
-    """Pushes current session state tasks directly to the browser's localStorage.
-    Only runs if we have completed our initial load to prevent overwriting with blank states."""
+    """Pushes current session state tasks securely to the browser's localStorage.
+    Uses HTML escaping to eliminate escaping/parse syntax errors on complex strings."""
     if not st.session_state.loaded_from_browser:
         return
         
     tasks_json = json.dumps(st.session_state.tasks)
-    escaped_json = tasks_json.replace("\\", "\\\\").replace("'", "\\'")
+    # Safely escape quotes and brackets so they cannot crash HTML or JS execution
+    safe_html_payload = html.escape(tasks_json)
     
     st.html(
         f"""
+        <div id="storage_writer_bridge" data-payload="{safe_html_payload}" style="display:none;"></div>
         <script>
-        localStorage.setItem("executive_tasks_list", '{escaped_json}');
+        (function() {{
+            const bridge = document.getElementById("storage_writer_bridge");
+            if (bridge) {{
+                const data = bridge.getAttribute("data-payload");
+                if (data) {{
+                    localStorage.setItem("executive_tasks_list", data);
+                }}
+            }}
+        }})();
         </script>
         """,
         unsafe_allow_javascript=True
     )
 
 # --- REFRESH AND LOAD COMPONENT ---
-# This invisible component handles the handshake directly with Streamlit's backend.
-# It reads the localStorage, and passes it to Python via a hidden input element.
 if not st.session_state.loaded_from_browser:
-    # Invisible input element for receiving data from JS
     st.html("""
         <style>
         div[data-testid="stTextInput"]:has(input[aria-label="sync_transfer"]) {
@@ -99,7 +106,6 @@ if not st.session_state.loaded_from_browser:
     """)
     sync_input = st.text_input("sync_transfer", value="", key="sync_transfer_input", label_visibility="collapsed")
     
-    # Process the incoming payload
     if sync_input and sync_input.strip() != "":
         try:
             parsed_data = json.loads(sync_input)
@@ -110,7 +116,6 @@ if not st.session_state.loaded_from_browser:
         except Exception:
             pass
 
-    # Inject the transfer script
     st.html(
         """
         <script>
@@ -147,7 +152,6 @@ if not st.session_state.loaded_from_browser:
         unsafe_allow_javascript=True
     )
     
-    # Display a clean, polite loading status
     st.html(f"""
         <div style="text-align: center; margin-top: 15%; font-family: {FONT_FAMILY}; color: #555555;">
             <h2>⚙️ Restoring Workspace...</h2>
@@ -213,7 +217,7 @@ with st.sidebar:
                         st.session_state.mode = "adding"
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
-                        save_tasks_to_browser()  # INSTANTLY SAVE TO BROWSER
+                        save_tasks_to_browser()  # Save instantly via safe bridge
                         st.rerun()
                     else:
                         st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
@@ -228,7 +232,7 @@ with st.sidebar:
                         st.session_state.tasks.extend(imported_data)
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
-                        save_tasks_to_browser()  # INSTANTLY SAVE TO BROWSER
+                        save_tasks_to_browser()  # Save instantly via safe bridge
                         st.rerun()
             else:
                 st.error("❌ Invalid format: The JSON file structure is unrecognized.")
