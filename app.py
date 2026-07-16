@@ -82,7 +82,23 @@ def save_tasks_to_browser():
         unsafe_allow_javascript=True
     )
 
-# --- SAFE LOCALSTORAGE LOADER (Websocket/State Transfer with Handshake Verification) ---
+# --- REFRESH SENSOR ---
+# This hidden input detects if the browser window has been physically reloaded (manual refresh)
+refresh_detected = st.text_input("refresh_sensor", value="", key="refresh_sensor_input", label_visibility="collapsed")
+
+# Hide the refresh sensor input field completely
+st.html("""
+    <style>
+    div[data-testid="stTextInput"]:has(input[aria-label="refresh_sensor"]) {
+        display: none !important;
+    }
+    </style>
+""")
+
+if refresh_detected == "manual_refresh":
+    st.session_state.loaded_from_browser = False
+
+# --- SAFE LOCALSTORAGE LOADER (With Manual Refresh Interceptor) ---
 if not st.session_state.loaded_from_browser:
     # Render custom CSS to ensure the transfer text-input remains totally invisible
     st.html("""
@@ -112,6 +128,23 @@ if not st.session_state.loaded_from_browser:
     st.html(
         """
         <script>
+        // Refresh Sensor: If sessionStorage doesn't have our run token, this is a clean/manual refresh
+        if (!sessionStorage.getItem("app_run_active")) {
+            const sensor = document.querySelectorAll('input[aria-label="refresh_sensor"]');
+            if (sensor.length > 0) {
+                sessionStorage.setItem("app_run_active", "true");
+                const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                nativeSetter.call(sensor[0], "manual_refresh");
+                sensor[0].dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // Submit trigger
+                const enterEvent = new KeyboardEvent('keydown', {
+                    bubbles: true, cancelable: true, key: 'Enter', code: 'Enter', keyCode: 13
+                });
+                sensor[0].dispatchEvent(enterEvent);
+            }
+        }
+
         let attempts = 0;
         const checkExist = setInterval(() => {
             attempts++;
@@ -160,6 +193,20 @@ if not st.session_state.loaded_from_browser:
         </div>
     """)
     st.stop()
+
+# --- INTERNAL STATE CLEANUP ---
+# Once loaded, we clear the browser's temporary refresh sensor input value so it doesn't loop
+if refresh_detected == "manual_refresh":
+    st.html("""
+        <script>
+        const sensor = document.querySelectorAll('input[aria-label="refresh_sensor"]');
+        if (sensor.length > 0) {
+            const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+            nativeSetter.call(sensor[0], "");
+            sensor[0].dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        </script>
+    """, unsafe_allow_javascript=True)
 
 # ==============================================================================
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
