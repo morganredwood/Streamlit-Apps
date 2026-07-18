@@ -164,6 +164,7 @@ if not st.session_state.loaded_from_browser:
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
 # ==============================================================================
 with st.sidebar:
+    # Formatted correctly to resolve the previous unclosed multi-line string bug
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Utilities</h3>")
     
     # --- UTILITY 1: EXPORT LIST ---
@@ -280,7 +281,8 @@ AFFIRMATIONS = [
 
 # --- MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
-    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {'Georgia'};'>Executive Function Assistant</h1>")
+    # Now dynamically binds to FONT_FAMILY variable mapping
+    st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Executive Function Assistant</h1>")
     
     left_col, right_col = st.columns([1.5, 1.2], gap="large")
 
@@ -303,6 +305,7 @@ if st.session_state.mode == "adding":
     with right_col:
         st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
         
+        # Exact display matching required UI cap retention layout
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
@@ -437,7 +440,8 @@ elif st.session_state.mode == "working":
 
         current_task = st.session_state.tasks[st.session_state.current_index]
         
-        st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {'Georgia'};'>{current_task['name']}</h1>")
+        # Now dynamically binds to FONT_FAMILY variable mapping
+        st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>{current_task['name']}</h1>")
         
         if current_task['prereq']:
             st.warning(f"⚠️ **You need to finish this task first:** \n\n  {current_task['prereq']}")
