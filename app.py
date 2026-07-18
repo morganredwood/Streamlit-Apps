@@ -298,8 +298,7 @@ if st.session_state.mode == "adding":
         if st.session_state.list_name:
             header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List: <span style='font-weight: normal;'>{st.session_state.list_name}</span></h3>"
         else:
-            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List: <span style='color: gray; font-weight: normal;'>(Assigned Export List File name appears here.)</span></h3>"
-        st.html(header_html)
+            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List: <span style='color: gray; font-weight: normal;'><i>(Assigned Export List File name appears here.)</i></span></h3>"st.html(header_html)
         
         with st.container(height=450, border=True):
             if len(st.session_state.tasks) > 0:
