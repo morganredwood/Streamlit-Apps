@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import random
 import html
+import os
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
@@ -164,7 +165,6 @@ if not st.session_state.loaded_from_browser:
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
 # ==============================================================================
 with st.sidebar:
-    # Formatted correctly to resolve the previous unclosed multi-line string bug
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Utilities</h3>")
     
     # --- UTILITY 1: EXPORT LIST ---
@@ -218,6 +218,11 @@ with st.sidebar:
                         st.session_state.mode = "adding"
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
+                        
+                        # Extract base file name without the extension cleanly
+                        base_name, _ = os.path.splitext(uploaded_file.name)
+                        st.session_state.list_name = base_name
+                        
                         save_tasks_to_browser()  # Save instantly via safe bridge
                         st.rerun()
                     else:
@@ -268,6 +273,9 @@ if "force_expand_list" not in st.session_state:
 if "affirmation" not in st.session_state:
     st.session_state.affirmation = None
 
+if "list_name" not in st.session_state:
+    st.session_state.list_name = None
+
 AFFIRMATIONS = [
     "✨ Fantastic job getting that done!",
     "🎉 Way to cross that off your list!",
@@ -281,13 +289,17 @@ AFFIRMATIONS = [
 
 # --- MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
-    # Now dynamically binds to FONT_FAMILY variable mapping
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Executive Function Assistant</h1>")
     
     left_col, right_col = st.columns([1.5, 1.2], gap="large")
 
     with left_col:
-        st.html(f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List</h3>")
+        # Dynamic title layout honoring the requested visual weighting rules
+        if st.session_state.list_name:
+            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List: <span style='font-weight: normal;'>{st.session_state.list_name}</span></h3>"
+        else:
+            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List: <span style='color: gray; font-weight: normal;'>(Assigned Export List File name appears here.)</span></h3>"
+        st.html(header_html)
         
         with st.container(height=450, border=True):
             if len(st.session_state.tasks) > 0:
@@ -305,7 +317,6 @@ if st.session_state.mode == "adding":
     with right_col:
         st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
         
-        # Exact display matching required UI cap retention layout
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
         with st.form(key="input_form", clear_on_submit=True):
@@ -344,6 +355,7 @@ if st.session_state.mode == "adding":
                     else:
                         st.session_state.tasks = []
                         st.session_state.current_index = 0
+                        st.session_state.list_name = None
                         st.session_state.confirm_delete_list = False
                         st.session_state.show_delete_dropdown = False
                         st.session_state.show_move_dropdowns = False
@@ -440,7 +452,6 @@ elif st.session_state.mode == "working":
 
         current_task = st.session_state.tasks[st.session_state.current_index]
         
-        # Now dynamically binds to FONT_FAMILY variable mapping
         st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>{current_task['name']}</h1>")
         
         if current_task['prereq']:
@@ -488,6 +499,7 @@ elif st.session_state.mode == "working":
             st.session_state.current_index = 0
             st.session_state.mode = "adding"
             st.session_state.affirmation = None
+            st.session_state.list_name = None
             save_tasks_to_browser()
             st.rerun()
             
