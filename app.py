@@ -87,7 +87,7 @@ def save_tasks_to_browser():
             if (bridge) {{
                 const data = bridge.getAttribute("data-payload");
                 if (data) {{
-                    localStorage.setItem("executive_tasks_list", data);
+                    localStorage.setItem("task_list_backup", data);
                 }}
             }}
         }})();
@@ -128,7 +128,7 @@ if not st.session_state.loaded_from_browser:
             if (inputs.length > 0) {
                 clearInterval(checkExist);
                 const inputEl = inputs[0];
-                const saved = localStorage.getItem("executive_tasks_list");
+                const saved = localStorage.getItem("task_list_backup");
                 const dataToSend = saved ? saved : "[]";
                 
                 if (inputEl.value !== dataToSend) {
@@ -173,7 +173,7 @@ with st.sidebar:
         st.download_button(
             label="📤 Export List",
             data=json_string,
-            file_name="executive_tasks_backup.json",
+            file_name="task_list_backup.json",
             mime="application/json",
             use_container_width=True,
             key="btn_export_sidebar"
