@@ -22,45 +22,57 @@ COLOR_DELETE_LIST = "black"
 
 st.html(f"""
     <style>
-    /* Prevent words/letters from wrapping inside all action buttons */
+    /* 1. Prevent letter-splitting inside buttons while allowing clean word wraps at spaces */
+    div[class*="st-key-btn_"] button {{
+        width: 100% !important;
+        padding-left: 4px !important;
+        padding-right: 4px !important;
+    }}
+    
     div[class*="st-key-btn_"] button p {{
-        white-space: nowrap !important;
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+        hyphens: none !important;
+        text-align: center !important;
     }}
 
-    /* Responsive adjustment for tablets/medium screens: stack buttons cleanly when tight */
+    /* 2. Responsive adjustment for tablets/medium screens: stack columns cleanly when tight */
     @media (max-width: 992px) {{
         div[data-testid="column"]:has(div[class*="st-key-btn_"]) {{
-            min-width: 120px !important;
+            min-width: 110px !important;
             flex: 1 1 45% !important;
+            margin-bottom: 8px !important;
         }}
     }}
 
-    /* 1. Add Task Button */
+    /* 3. Button Specific Colors */
+    /* Add Task Button */
     div[class*="st-key-btn_add"] button p {{
         color: {COLOR_ADD_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 2. Move Task Button */
+    /* Move Task Button */
     div[class*="st-key-btn_move"] button p {{
         color: {COLOR_MOVE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 3. Delete Task Button */
+    /* Delete Task Button */
     div[class*="st-key-btn_delete_task"] button p {{
         color: {COLOR_DELETE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 4. Delete List Button */
+    /* Delete List Button */
     div[class*="st-key-btn_delete_list"] button p {{
         color: {COLOR_DELETE_LIST} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 5. Confirm Move Action Button */
+    /* Confirm Move Action Button */
     div[class*="st-key-btn_confirm_move"] button p {{
         color: {COLOR_MOVE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* 6. Confirm Delete Action Button */
+    /* Confirm Delete Action Button */
     div[class*="st-key-btn_confirm_delete"] button p {{
         color: {COLOR_DELETE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
