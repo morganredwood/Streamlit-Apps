@@ -22,6 +22,19 @@ COLOR_DELETE_LIST = "black"
 
 st.html(f"""
     <style>
+    /* Prevent words/letters from wrapping inside all action buttons */
+    div[class*="st-key-btn_"] button p {{
+        white-space: nowrap !important;
+    }}
+
+    /* Responsive adjustment for tablets/medium screens: stack buttons cleanly when tight */
+    @media (max-width: 992px) {{
+        div[data-testid="column"]:has(div[class*="st-key-btn_"]) {{
+            min-width: 120px !important;
+            flex: 1 1 45% !important;
+        }}
+    }}
+
     /* 1. Add Task Button */
     div[class*="st-key-btn_add"] button p {{
         color: {COLOR_ADD_TASK} !important;
@@ -87,7 +100,7 @@ def save_tasks_to_browser():
             if (bridge) {{
                 const data = bridge.getAttribute("data-payload");
                 if (data) {{
-                    localStorage.setItem("task_list_backup", data);
+                    localStorage.setItem("executive_tasks_list", data);
                 }}
             }}
         }})();
@@ -128,7 +141,7 @@ if not st.session_state.loaded_from_browser:
             if (inputs.length > 0) {
                 clearInterval(checkExist);
                 const inputEl = inputs[0];
-                const saved = localStorage.getItem("task_list_backup");
+                const saved = localStorage.getItem("executive_tasks_list");
                 const dataToSend = saved ? saved : "[]";
                 
                 if (inputEl.value !== dataToSend) {
@@ -173,7 +186,7 @@ with st.sidebar:
         st.download_button(
             label="📤 Export List",
             data=json_string,
-            file_name="task_list_backup.json",
+            file_name="executive_tasks_backup.json",
             mime="application/json",
             use_container_width=True,
             key="btn_export_sidebar"
