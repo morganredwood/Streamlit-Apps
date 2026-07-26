@@ -192,13 +192,32 @@ if not st.session_state.loaded_from_browser:
 with st.sidebar:
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Utilities</h3>")
     
-    # --- UTILITY 1: EXPORT LIST ---
+    # --- UTILITY 1: EXPORT LIST WITH CUSTOM FILENAME ---
     if len(st.session_state.tasks) > 0:
+        default_name = st.session_state.list_name if st.session_state.list_name else "executive_tasks_backup"
+        
+        st.html(f"<div style='color: gray; font-size: 14px; font-family: {FONT_FAMILY}; margin-bottom: 2px;'>Export File Name:</div>")
+        custom_name = st.text_input(
+            label="Export File Name",
+            value=default_name,
+            key="export_file_name_input",
+            label_visibility="collapsed"
+        )
+        
+        # Clean up name: strip trailing .json if user accidentally typed it
+        clean_name = custom_name.strip()
+        if clean_name.lower().endswith(".json"):
+            clean_name = clean_name[:-5]
+        if not clean_name:
+            clean_name = "executive_tasks_backup"
+            
+        final_export_filename = f"{clean_name}.json"
+
         json_string = json.dumps(st.session_state.tasks, indent=2)
         st.download_button(
             label="📤 Export List",
             data=json_string,
-            file_name="executive_tasks_backup.json",
+            file_name=final_export_filename,
             mime="application/json",
             use_container_width=True,
             key="btn_export_sidebar"
