@@ -1,23 +1,39 @@
 import streamlit as st
 import json
 import random
-import html
 import os
 
 # 🚀 Unlocks the entire width of your monitor, removing restricted side margins
 st.set_page_config(layout="wide")
 
 # ==============================================================================
-# 🗂️ GLOBAL STATE INITIALIZATIONS & CONSTANTS (MUST BE FIRST)
+# 🗂️ LOCAL FILE SYSTEM PERSISTENCE (LAPTOP SERVER MODE)
 # ==============================================================================
+DB_FILE = "tasks.json"
 LIMIT = 500  # Hard locked cap capacity
 
+# Load tasks directly from laptop hard drive on startup
 if "tasks" not in st.session_state:
-    st.session_state.tasks = []
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r") as f:
+                st.session_state.tasks = json.load(f)
+        except Exception:
+            st.session_state.tasks = []
+    else:
+        st.session_state.tasks = []
 
-if "loaded_from_browser" not in st.session_state:
-    st.session_state.loaded_from_browser = False
+def save_to_laptop():
+    """Writes the current task list directly to the local JSON file on your laptop."""
+    try:
+        with open(DB_FILE, "w") as f:
+            json.dump(st.session_state.tasks, f, indent=2)
+    except Exception as e:
+        st.sidebar.error(f"Failed to save locally: {e}")
 
+# ==============================================================================
+# 🗂️ OTHER GLOBAL STATE INITIALIZATIONS & CONSTANTS
+# ==============================================================================
 if "list_name" not in st.session_state:
     st.session_state.list_name = None
 
@@ -133,101 +149,6 @@ st.html(f"""
 """)
 
 # ==============================================================================
-# 🌐 LOCAL BROWSER PERSISTENCE ENGINE (SAFE FOR 500+ TASKS)
-# ==============================================================================
-def save_tasks_to_browser():
-    """Pushes current session state tasks securely to the browser's localStorage.
-    Uses HTML escaping to eliminate escaping/parse syntax errors on complex strings."""
-    if not st.session_state.loaded_from_browser:
-        return
-        
-    tasks_json = json.dumps(st.session_state.tasks)
-    safe_html_payload = html.escape(tasks_json)
-    
-    st.html(
-        f"""
-        <div id="storage_writer_bridge" data-payload="{safe_html_payload}" style="display:none;"></div>
-        <script>
-        (function() {{
-            const bridge = document.getElementById("storage_writer_bridge");
-            if (bridge) {{
-                const data = bridge.getAttribute("data-payload");
-                if (data) {{
-                    localStorage.setItem("executive_tasks_list", data);
-                }}
-            }}
-        }})();
-        </script>
-        """,
-        unsafe_allow_javascript=True
-    )
-
-# --- REFRESH AND LOAD COMPONENT ---
-if not st.session_state.loaded_from_browser:
-    st.html("""
-        <style>
-        div[data-testid="stTextInput"]:has(input[aria-label="sync_transfer"]) {
-            display: none !important;
-        }
-        </style>
-    """)
-    sync_input = st.text_input("sync_transfer", value="", key="sync_transfer_input", label_visibility="collapsed")
-    
-    if sync_input and sync_input.strip() != "":
-        try:
-            parsed_data = json.loads(sync_input)
-            if isinstance(parsed_data, list):
-                st.session_state.tasks = parsed_data
-                st.session_state.loaded_from_browser = True
-                st.rerun()
-        except Exception:
-            pass
-
-    st.html(
-        """
-        <script>
-        let attempts = 0;
-        const checkExist = setInterval(() => {
-            attempts++;
-            const inputs = document.querySelectorAll('input[aria-label="sync_transfer"]');
-            
-            if (inputs.length > 0) {
-                clearInterval(checkExist);
-                const inputEl = inputs[0];
-                const saved = localStorage.getItem("executive_tasks_list");
-                const dataToSend = saved ? saved : "[]";
-                
-                if (inputEl.value !== dataToSend) {
-                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                    nativeInputValueSetter.call(inputEl, dataToSend);
-                    
-                    const event = new Event('input', { bubbles: true });
-                    inputEl.dispatchEvent(event);
-                    
-                    const enterEvent = new KeyboardEvent('keydown', {
-                        bubbles: true, cancelable: true, key: 'Enter', code: 'Enter', keyCode: 13
-                    });
-                    inputEl.dispatchEvent(enterEvent);
-                }
-            }
-            if (attempts > 100) {
-                clearInterval(checkExist);
-            }
-        }, 30);
-        </script>
-        """,
-        unsafe_allow_javascript=True
-    )
-    
-    st.html(f"""
-        <div style="text-align: center; margin-top: 15%; font-family: {FONT_FAMILY}; color: #555555;">
-            <h2>⚙️ Restoring Workspace...</h2>
-            <p>Retrieving your tasks securely from your browser storage.</p>
-        </div>
-    """)
-    st.stop()
-
-# ==============================================================================
 # 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
 # ==============================================================================
 with st.sidebar:
@@ -246,7 +167,6 @@ with st.sidebar:
             label_visibility="collapsed"
         )
         
-        # Clean up name: strip trailing .json if user accidentally typed it
         clean_name = custom_name.strip()
         if clean_name.lower().endswith(".json"):
             clean_name = clean_name[:-5]
@@ -300,11 +220,10 @@ with st.sidebar:
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
                         
-                        # Extract base file name without the extension cleanly
                         base_name, _ = os.path.splitext(uploaded_file.name)
                         st.session_state.list_name = base_name
                         
-                        save_tasks_to_browser()  # Save instantly via safe bridge
+                        save_to_laptop()
                         st.rerun()
                     else:
                         st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
@@ -319,7 +238,7 @@ with st.sidebar:
                         st.session_state.tasks.extend(imported_data)
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
-                        save_tasks_to_browser()  # Save instantly via safe bridge
+                        save_to_laptop()
                         st.rerun()
             else:
                 st.error("❌ Invalid format: The JSON file structure is unrecognized.")
@@ -341,7 +260,6 @@ if st.session_state.mode == "adding":
     left_col, right_col = st.columns([1.5, 1.2], gap="large")
 
     with left_col:
-        # Dynamic title layout honoring the requested visual weighting rules
         if st.session_state.list_name:
             header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List: <span style='font-weight: normal;'>{st.session_state.list_name}</span></h3>"
         else:
@@ -406,7 +324,7 @@ if st.session_state.mode == "adding":
                         st.session_state.confirm_delete_list = False
                         st.session_state.show_delete_dropdown = False
                         st.session_state.show_move_dropdowns = False
-                        save_tasks_to_browser()
+                        save_to_laptop()
                         st.rerun()
 
             if submit_task:
@@ -417,7 +335,7 @@ if st.session_state.mode == "adding":
                             "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
                         }
                         st.session_state.tasks.append(new_task)
-                        save_tasks_to_browser()
+                        save_to_laptop()
                         st.session_state.confirm_delete_list = False
                         st.rerun()
                     else:
@@ -451,7 +369,7 @@ if st.session_state.mode == "adding":
                         moved_task = st.session_state.tasks.pop(from_idx)
                         st.session_state.tasks.insert(to_idx, moved_task)
                         
-                        save_tasks_to_browser()
+                        save_to_laptop()
                         st.session_state.show_move_dropdowns = False
                         st.rerun()
                         
@@ -475,7 +393,7 @@ if st.session_state.mode == "adding":
                 if st.button("Confirm Delete", key="btn_confirm_delete", use_container_width=True):
                     del_idx = int(selected_num) - 1
                     del st.session_state.tasks[del_idx]
-                    save_tasks_to_browser()
+                    save_to_laptop()
                     st.session_state.show_delete_dropdown = False
                     st.rerun()
         
@@ -512,7 +430,7 @@ elif st.session_state.mode == "working":
         with col1:
             if st.button("👍 Yes, I completed it!", use_container_width=True):
                 del st.session_state.tasks[st.session_state.current_index]
-                save_tasks_to_browser()
+                save_to_laptop()
                 st.session_state.affirmation = random.choice(AFFIRMATIONS)
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
@@ -547,6 +465,6 @@ elif st.session_state.mode == "working":
             st.session_state.mode = "adding"
             st.session_state.affirmation = None
             st.session_state.list_name = None
-            save_tasks_to_browser()
+            save_to_laptop()
             st.rerun()
             
