@@ -193,7 +193,7 @@ with st.sidebar:
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Utilities</h3>")
     
     # --- UTILITY 1: EXPORT LIST WITH CUSTOM FILENAME ---
-    if len(st.session_state.tasks) > 0:
+    if len(st.session_state.tasks) >= 0:
         default_name = st.session_state.list_name if st.session_state.list_name else "executive_tasks_backup"
         
         st.html(f"<div style='color: gray; font-size: 14px; font-family: {FONT_FAMILY}; margin-bottom: 2px;'>Export File Name:</div>")
