@@ -8,6 +8,58 @@ import os
 st.set_page_config(layout="wide")
 
 # ==============================================================================
+# 🗂️ GLOBAL STATE INITIALIZATIONS & CONSTANTS (MUST BE FIRST)
+# ==============================================================================
+LIMIT = 500  # Hard locked cap capacity
+
+if "tasks" not in st.session_state:
+    st.session_state.tasks = []
+
+if "loaded_from_browser" not in st.session_state:
+    st.session_state.loaded_from_browser = False
+
+if "list_name" not in st.session_state:
+    st.session_state.list_name = None
+
+if "uploader_id" not in st.session_state:
+    st.session_state.uploader_id = 0
+
+if "import_success" not in st.session_state:
+    st.session_state.import_success = False
+
+if "current_index" not in st.session_state:
+    st.session_state.current_index = 0  
+
+if "mode" not in st.session_state:
+    st.session_state.mode = "adding"  
+
+if "show_delete_dropdown" not in st.session_state:
+    st.session_state.show_delete_dropdown = False
+
+if "show_move_dropdowns" not in st.session_state:
+    st.session_state.show_move_dropdowns = False
+
+if "confirm_delete_list" not in st.session_state:
+    st.session_state.confirm_delete_list = False
+
+if "force_expand_list" not in st.session_state:
+    st.session_state.force_expand_list = True
+
+if "affirmation" not in st.session_state:
+    st.session_state.affirmation = None
+
+AFFIRMATIONS = [
+    "✨ Fantastic job getting that done!",
+    "🎉 Way to cross that off your list!",
+    "🚀 Outstanding momentum! Keep it going!",
+    "⭐ Brilliant effort on this task!",
+    "🎯 Crushing your goals one step at a time!",
+    "🏆 Victory! Another item successfully completed!",
+    "🌈 Spectacular execution!",
+    "⚡ Pure efficiency! You're doing amazing!"
+]
+
+# ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION
 # ==============================================================================
 TEXT_COLOR = "black"  
@@ -83,16 +135,6 @@ st.html(f"""
 # ==============================================================================
 # 🌐 LOCAL BROWSER PERSISTENCE ENGINE (SAFE FOR 500+ TASKS)
 # ==============================================================================
-LIMIT = 500  # Hard locked cap capacity
-
-# Initialize Python Session State
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
-
-if "loaded_from_browser" not in st.session_state:
-    st.session_state.loaded_from_browser = False
-
-# --- BULLETPROOF LOCALSTORAGE WRITER ---
 def save_tasks_to_browser():
     """Pushes current session state tasks securely to the browser's localStorage.
     Uses HTML escaping to eliminate escaping/parse syntax errors on complex strings."""
@@ -100,7 +142,6 @@ def save_tasks_to_browser():
         return
         
     tasks_json = json.dumps(st.session_state.tasks)
-    # Safely escape quotes and brackets so they cannot crash HTML or JS execution
     safe_html_payload = html.escape(tasks_json)
     
     st.html(
@@ -194,7 +235,8 @@ with st.sidebar:
     
     # --- UTILITY 1: EXPORT LIST WITH CUSTOM FILENAME ---
     if len(st.session_state.tasks) > 0:
-        default_name = st.session_state.list_name if st.session_state.list_name else "executive_tasks_backup"
+        current_list_name = st.session_state.get("list_name", None)
+        default_name = current_list_name if current_list_name else "executive_tasks_backup"
         
         st.html(f"<div style='color: gray; font-size: 14px; font-family: {FONT_FAMILY}; margin-bottom: 2px;'>Export File Name:</div>")
         custom_name = st.text_input(
@@ -226,11 +268,6 @@ with st.sidebar:
         st.button("📤 Export List (Empty)", disabled=True, use_container_width=True, key="btn_export_disabled")
 
     # --- UTILITY 2: DUAL IMPORT INTERFACE ---
-    if "uploader_id" not in st.session_state:
-        st.session_state.uploader_id = 0
-    if "import_success" not in st.session_state:
-        st.session_state.import_success = False
-
     uploaded_file = st.file_uploader(
         label="📥 Select Saved List (.json)",
         type=["json"],
@@ -294,42 +331,8 @@ with st.sidebar:
         st.session_state.import_success = False
 
 # ==============================================================================
-# 🗂️ STATE INITIALIZATIONS & CONSTANTS
+# 🧩 MAIN VIEW LOGIC
 # ==============================================================================
-if "current_index" not in st.session_state:
-    st.session_state.current_index = 0  
-
-if "mode" not in st.session_state:
-    st.session_state.mode = "adding"  
-
-if "show_delete_dropdown" not in st.session_state:
-    st.session_state.show_delete_dropdown = False
-
-if "show_move_dropdowns" not in st.session_state:
-    st.session_state.show_move_dropdowns = False
-
-if "confirm_delete_list" not in st.session_state:
-    st.session_state.confirm_delete_list = False
-
-if "force_expand_list" not in st.session_state:
-    st.session_state.force_expand_list = True
-
-if "affirmation" not in st.session_state:
-    st.session_state.affirmation = None
-
-if "list_name" not in st.session_state:
-    st.session_state.list_name = None
-
-AFFIRMATIONS = [
-    "✨ Fantastic job getting that done!",
-    "🎉 Way to cross that off your list!",
-    "🚀 Outstanding momentum! Keep it going!",
-    "⭐ Brilliant effort on this task!",
-    "🎯 Crushing your goals one step at a time!",
-    "🏆 Victory! Another item successfully completed!",
-    "🌈 Spectacular execution!",
-    "⚡ Pure efficiency! You're doing amazing!"
-]
 
 # --- MODE: ADDING TASKS ---
 if st.session_state.mode == "adding":
