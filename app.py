@@ -329,6 +329,8 @@ if st.session_state.mode == "adding":
             row1_col1, row1_col2, row1_col3 = st.columns(3)
             with row1_col1:
                 submit_task = st.form_submit_button(add_button_label, key="btn_add", use_container_width=True)
+                if submit_task:
+                    st.session_state.confirm_delete_list = False  # Reset on action
 
             with row1_col2:
                 edit_task_click = st.form_submit_button("Edit Task", key="btn_edit", use_container_width=True)
@@ -336,6 +338,7 @@ if st.session_state.mode == "adding":
                     st.session_state.show_edit_dropdown = True
                     st.session_state.show_move_dropdowns = False
                     st.session_state.show_delete_dropdown = False
+                    st.session_state.confirm_delete_list = False  # Reset on action
 
             with row1_col3:
                 move_task_click = st.form_submit_button("Move Task", key="btn_move", use_container_width=True)
@@ -343,6 +346,7 @@ if st.session_state.mode == "adding":
                     st.session_state.show_move_dropdowns = True
                     st.session_state.show_edit_dropdown = False
                     st.session_state.show_delete_dropdown = False
+                    st.session_state.confirm_delete_list = False  # Reset on action
 
             row2_col1, row2_col2 = st.columns(2)
             with row2_col1:
@@ -351,6 +355,7 @@ if st.session_state.mode == "adding":
                     st.session_state.show_delete_dropdown = True
                     st.session_state.show_edit_dropdown = False
                     st.session_state.show_move_dropdowns = False
+                    st.session_state.confirm_delete_list = False  # Reset on action
 
             with row2_col2:
                 black_btn_label = "Yes, All" if st.session_state.confirm_delete_list else "Delete List"
@@ -381,7 +386,6 @@ if st.session_state.mode == "adding":
                         "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
                     }
                     
-                    # CASE 1: Saving changes to an existing task in-place
                     if st.session_state.editing_index is not None:
                         idx = st.session_state.editing_index
                         if idx < len(st.session_state.tasks):
@@ -391,13 +395,10 @@ if st.session_state.mode == "adding":
                         st.session_state.edit_prereq_name = ""
                         save_to_laptop()
                         st.rerun()
-                    
-                    # CASE 2: Adding a brand new task
                     else:
                         if len(st.session_state.tasks) < LIMIT:
                             st.session_state.tasks.append(new_task_obj)
                             save_to_laptop()
-                            st.session_state.confirm_delete_list = False
                             st.rerun()
                         else:
                             st.sidebar.error(f"Limit reached! You cannot add more than {LIMIT} tasks.")
