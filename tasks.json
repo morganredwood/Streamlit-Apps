@@ -1,0 +1,202 @@
+[
+  {
+    "name": "Cook lentils.",
+    "prereq": null
+  },
+  {
+    "name": "Call Christian Psychological Center to schedule an appointment for a month from today.",
+    "prereq": "It must be Monday - Friday between the hours of 7:00 a.m. and 5:00 p.m. Have your gray planner and a pen at hand when you call."
+  },
+  {
+    "name": "Clear the air fryer table.",
+    "prereq": null
+  },
+  {
+    "name": "Clear the dining table.",
+    "prereq": null
+  },
+  {
+    "name": "Clear the standing desk.",
+    "prereq": null
+  },
+  {
+    "name": "Clear the living room floor.",
+    "prereq": null
+  },
+  {
+    "name": "Clear the couch.",
+    "prereq": null
+  },
+  {
+    "name": "Clear the coffee table.",
+    "prereq": null
+  },
+  {
+    "name": "Clear the office floor.",
+    "prereq": null
+  },
+  {
+    "name": "Put away the dishes.",
+    "prereq": null
+  },
+  {
+    "name": "Wash a load of dishes.",
+    "prereq": null
+  },
+  {
+    "name": "Put away the dishes.",
+    "prereq": null
+  },
+  {
+    "name": "Wash a load of dishes.",
+    "prereq": null
+  },
+  {
+    "name": "Put away the dishes.",
+    "prereq": null
+  },
+  {
+    "name": "Wash a load of dishes.",
+    "prereq": null
+  },
+  {
+    "name": "Put away the dishes.",
+    "prereq": null
+  },
+  {
+    "name": "Remove the dead animal from the attic.",
+    "prereq": null
+  },
+  {
+    "name": "Change the AC filter in the attic.",
+    "prereq": null
+  },
+  {
+    "name": "Reset the Nest thermostat notification for the AC filter.",
+    "prereq": null
+  },
+  {
+    "name": "Complete your 2024 tax return.",
+    "prereq": "Set a timer for 30 minutes. If the timer runs out and you are not finished, add a new session to your task list and then take a stretch break."
+  },
+  {
+    "name": "Complete your 2025 tax return.",
+    "prereq": "Set a timer for 30 minutes. If the timer runs out and you are not finished, add a new session to your task list and then take a stretch break."
+  },
+  {
+    "name": "Refill the hand soap dispenser in the kitchen.",
+    "prereq": null
+  },
+  {
+    "name": "Brush your teeth.",
+    "prereq": "Floss your teeth. Monday"
+  },
+  {
+    "name": "Pick up poops in the front yard.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Feed Teddy.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Make the bed.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Drink a second glass of water.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Drink a third glass of water.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Drink a fourth glass of water.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Drink a fifth glass of water.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Drink a sixth glass of water.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Drink a seventh glass of water.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Drink an eighth glass of water.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Brush your teeth.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Floss your teeth.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Put in your retainer.",
+    "prereq": "Brush and floss your teeth. Monday"
+  },
+  {
+    "name": "Take a stretch break.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Take Teddy for a walk.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Log your blood pressure.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Walk on your treadmill for an episode of Friends.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Complete a Spanish Memrise goal.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Complete a Chinese Memrise goal.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Complete a HelloChinese goal.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Complete a Chinese Duolingo goal.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Complete a Spanish Rosetta Stone goal.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Complete a Chinese Rosetta Stone goal.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Practice reading aloud in Chinese.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Practice reading aloud in Spanish.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Check Gmail.",
+    "prereq": "Monday"
+  },
+  {
+    "name": "Check Outlook.",
+    "prereq": "Monday"
+  }
+]

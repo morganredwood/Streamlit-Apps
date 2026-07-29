@@ -32,7 +32,7 @@ def save_to_laptop():
         st.sidebar.error(f"Failed to save locally: {e}")
 
 # ==============================================================================
-# 🗂️ OTHER GLOBAL STATE INITIALIZATIONS & CONSTANTS
+# 🗂️ GLOBAL STATE INITIALIZATIONS
 # ==============================================================================
 if "list_name" not in st.session_state:
     st.session_state.list_name = None
@@ -49,17 +49,28 @@ if "current_index" not in st.session_state:
 if "mode" not in st.session_state:
     st.session_state.mode = "adding"  
 
+# Panel visibility toggles
 if "show_delete_dropdown" not in st.session_state:
     st.session_state.show_delete_dropdown = False
 
 if "show_move_dropdowns" not in st.session_state:
     st.session_state.show_move_dropdowns = False
 
+if "show_edit_dropdown" not in st.session_state:
+    st.session_state.show_edit_dropdown = False
+
+# Editing state tracker
+if "editing_index" not in st.session_state:
+    st.session_state.editing_index = None
+
+if "edit_task_name" not in st.session_state:
+    st.session_state.edit_task_name = ""
+
+if "edit_prereq_name" not in st.session_state:
+    st.session_state.edit_prereq_name = ""
+
 if "confirm_delete_list" not in st.session_state:
     st.session_state.confirm_delete_list = False
-
-if "force_expand_list" not in st.session_state:
-    st.session_state.force_expand_list = True
 
 if "affirmation" not in st.session_state:
     st.session_state.affirmation = None
@@ -84,13 +95,14 @@ FONT_FAMILY = "Georgia"
 STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
 
 COLOR_ADD_TASK = "green"
+COLOR_EDIT_TASK = "darkorange"
 COLOR_MOVE_TASK = "blue"
 COLOR_DELETE_TASK = "red"
 COLOR_DELETE_LIST = "black"
 
 st.html(f"""
     <style>
-    /* 1. Prevent letter-splitting inside buttons while allowing clean word wraps at spaces */
+    /* 1. Prevent letter-splitting inside buttons while allowing clean word wraps */
     div[class*="st-key-btn_"] button {{
         width: 100% !important;
         padding-left: 4px !important;
@@ -105,42 +117,44 @@ st.html(f"""
         text-align: center !important;
     }}
 
-    /* 2. Responsive adjustment for tablets/medium screens: stack columns cleanly when tight */
+    /* 2. Responsive adjustment for tablets/medium screens */
     @media (max-width: 992px) {{
         div[data-testid="column"]:has(div[class*="st-key-btn_"]) {{
             min-width: 110px !important;
-            flex: 1 1 45% !important;
+            flex: 1 1 30% !important;
             margin-bottom: 8px !important;
         }}
     }}
 
     /* 3. Button Specific Colors */
-    /* Add Task Button */
     div[class*="st-key-btn_add"] button p {{
         color: {COLOR_ADD_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* Move Task Button */
+    div[class*="st-key-btn_edit"] button p {{
+        color: {COLOR_EDIT_TASK} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
     div[class*="st-key-btn_move"] button p {{
         color: {COLOR_MOVE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* Delete Task Button */
     div[class*="st-key-btn_delete_task"] button p {{
         color: {COLOR_DELETE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* Delete List Button */
     div[class*="st-key-btn_delete_list"] button p {{
         color: {COLOR_DELETE_LIST} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* Confirm Move Action Button */
+    div[class*="st-key-btn_confirm_edit"] button p {{
+        color: {COLOR_EDIT_TASK} !important;
+        font-family: {FONT_FAMILY} !important;
+    }}
     div[class*="st-key-btn_confirm_move"] button p {{
         color: {COLOR_MOVE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
     }}
-    /* Confirm Delete Action Button */
     div[class*="st-key-btn_confirm_delete"] button p {{
         color: {COLOR_DELETE_TASK} !important;
         font-family: {FONT_FAMILY} !important;
@@ -154,7 +168,7 @@ st.html(f"""
 with st.sidebar:
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Utilities</h3>")
     
-    # --- UTILITY 1: EXPORT LIST WITH CUSTOM FILENAME ---
+    # --- UTILITY 1: EXPORT LIST ---
     if len(st.session_state.tasks) > 0:
         current_list_name = st.session_state.get("list_name", None)
         default_name = current_list_name if current_list_name else "executive_tasks_backup"
@@ -211,7 +225,6 @@ with st.sidebar:
                 num_imported = len(imported_data)
                 current_count = len(st.session_state.tasks)
                 
-                # --- PROCESS ACTION: REPLACE ---
                 if replace_clicked:
                     if num_imported <= LIMIT:
                         st.session_state.tasks = imported_data
@@ -219,6 +232,7 @@ with st.sidebar:
                         st.session_state.mode = "adding"
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
+                        st.session_state.editing_index = None
                         
                         base_name, _ = os.path.splitext(uploaded_file.name)
                         st.session_state.list_name = base_name
@@ -226,12 +240,11 @@ with st.sidebar:
                         save_to_laptop()
                         st.rerun()
                     else:
-                        st.error(f"❌ Import failed: File exceeds the maximum limit of {LIMIT} tasks.")
+                        st.error(f"❌ Import failed: File exceeds limit of {LIMIT} tasks.")
                 
-                # --- PROCESS ACTION: COMBINE ---
                 elif combine_clicked:
                     if current_count == 0:
-                        st.sidebar.warning("⚠️ Your task list is currently empty. You must enter a task first in order to combine.")
+                        st.sidebar.warning("⚠️ Your task list is currently empty. Enter a task first to combine.")
                     elif (current_count + num_imported) > LIMIT:
                         st.sidebar.error("❌ Unable to import: combined count exceeds limit.")
                     else:
@@ -241,8 +254,8 @@ with st.sidebar:
                         save_to_laptop()
                         st.rerun()
             else:
-                st.error("❌ Invalid format: The JSON file structure is unrecognized.")
-        except Exception as e:
+                st.error("❌ Invalid format: Unrecognized JSON structure.")
+        except Exception:
             st.error("❌ Failed to read file.")
 
     if st.session_state.import_success:
@@ -253,7 +266,7 @@ with st.sidebar:
 # 🧩 MAIN VIEW LOGIC
 # ==============================================================================
 
-# --- MODE: ADDING TASKS ---
+# --- MODE: ADDING / EDITING TASKS ---
 if st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Executive Function Assistant</h1>")
     
@@ -269,10 +282,14 @@ if st.session_state.mode == "adding":
         with st.container(height=450, border=True):
             if len(st.session_state.tasks) > 0:
                 for i, t in enumerate(st.session_state.tasks, 1):
+                    # Highlight task currently loaded into edit mode
+                    is_editing_this = (st.session_state.editing_index == (i - 1))
+                    prefix = "✏️ " if is_editing_this else ""
+                    
                     if t["prereq"]:
-                        st.html(f"{STYLE_WRAPPER}{i}. <b>{t['name']}</b> <br><i>(Requires: {t['prereq']})</i></div><hr style='margin: 8px 0;'>")
+                        st.html(f"{STYLE_WRAPPER}{i}. {prefix}<b>{t['name']}</b> <br><i>(Requires: {t['prereq']})</i></div><hr style='margin: 8px 0;'>")
                     else:
-                        st.html(f"{STYLE_WRAPPER}{i}. <b>{t['name']}</b></div><hr style='margin: 8px 0;'>")
+                        st.html(f"{STYLE_WRAPPER}{i}. {prefix}<b>{t['name']}</b></div><hr style='margin: 8px 0;'>")
             else:
                 st.html(f"{STYLE_WRAPPER}Your list is currently empty.</div>")
 
@@ -284,33 +301,58 @@ if st.session_state.mode == "adding":
         
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
+        # Dynamic label depending on active edit status
+        if st.session_state.editing_index is not None:
+            active_task_num = st.session_state.editing_index + 1
+            form_title = f"Editing Task #{active_task_num}:"
+            add_button_label = "Save Changes"
+        else:
+            form_title = "Enter a task you would like to add:"
+            add_button_label = "Add Task"
+
         with st.form(key="input_form", clear_on_submit=True):
-            st.html(f"<div style='color: purple; font-family: {FONT_FAMILY};'>Enter a task you would like to add:</div>")
-            task_text = st.text_input(label="Task Input", label_visibility="collapsed")
+            st.html(f"<div style='color: purple; font-family: {FONT_FAMILY};'>{form_title}</div>")
+            task_text = st.text_input(
+                label="Task Input",
+                value=st.session_state.edit_task_name,
+                label_visibility="collapsed"
+            )
             
             st.html(f"<div style='color: gray; font-family: {FONT_FAMILY};'>What must be completed first? (Optional)</div>")
-            prereq_text = st.text_input(label="Prerequisite Input", label_visibility="collapsed")
+            prereq_text = st.text_input(
+                label="Prerequisite Input",
+                value=st.session_state.edit_prereq_name,
+                label_visibility="collapsed"
+            )
 
-            btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
-            
-            with btn_col1:
-                submit_task = st.form_submit_button("Add Task", key="btn_add", use_container_width=True)
+            # --- OPTION A: 3x2 ACTION GRID ---
+            row1_col1, row1_col2, row1_col3 = st.columns(3)
+            with row1_col1:
+                submit_task = st.form_submit_button(add_button_label, key="btn_add", use_container_width=True)
 
-            with btn_col2:
+            with row1_col2:
+                edit_task_click = st.form_submit_button("Edit Task", key="btn_edit", use_container_width=True)
+                if edit_task_click:
+                    st.session_state.show_edit_dropdown = True
+                    st.session_state.show_move_dropdowns = False
+                    st.session_state.show_delete_dropdown = False
+
+            with row1_col3:
                 move_task_click = st.form_submit_button("Move Task", key="btn_move", use_container_width=True)
                 if move_task_click:
                     st.session_state.show_move_dropdowns = True
+                    st.session_state.show_edit_dropdown = False
                     st.session_state.show_delete_dropdown = False
-                    st.session_state.force_expand_list = True
 
-            with btn_col3:
+            row2_col1, row2_col2 = st.columns(2)
+            with row2_col1:
                 delete_task_click = st.form_submit_button("Delete Task", key="btn_delete_task", use_container_width=True)
                 if delete_task_click:
                     st.session_state.show_delete_dropdown = True
+                    st.session_state.show_edit_dropdown = False
                     st.session_state.show_move_dropdowns = False
-                    st.session_state.force_expand_list = True
 
-            with btn_col4:
+            with row2_col2:
                 black_btn_label = "Yes, All" if st.session_state.confirm_delete_list else "Delete List"
                 delete_list_click = st.form_submit_button(black_btn_label, key="btn_delete_list", use_container_width=True)
                 if delete_list_click:
@@ -324,26 +366,68 @@ if st.session_state.mode == "adding":
                         st.session_state.confirm_delete_list = False
                         st.session_state.show_delete_dropdown = False
                         st.session_state.show_move_dropdowns = False
+                        st.session_state.show_edit_dropdown = False
+                        st.session_state.editing_index = None
+                        st.session_state.edit_task_name = ""
+                        st.session_state.edit_prereq_name = ""
                         save_to_laptop()
                         st.rerun()
 
+            # --- SUBMIT FORM HANDLER (ADD OR SAVE EDIT) ---
             if submit_task:
                 if task_text.strip() != "":
-                    if len(st.session_state.tasks) < LIMIT:
-                        new_task = {
-                            "name": task_text.strip(),
-                            "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
-                        }
-                        st.session_state.tasks.append(new_task)
+                    new_task_obj = {
+                        "name": task_text.strip(),
+                        "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
+                    }
+                    
+                    # CASE 1: Saving changes to an existing task in-place
+                    if st.session_state.editing_index is not None:
+                        idx = st.session_state.editing_index
+                        if idx < len(st.session_state.tasks):
+                            st.session_state.tasks[idx] = new_task_obj
+                        st.session_state.editing_index = None
+                        st.session_state.edit_task_name = ""
+                        st.session_state.edit_prereq_name = ""
                         save_to_laptop()
-                        st.session_state.confirm_delete_list = False
                         st.rerun()
+                    
+                    # CASE 2: Adding a brand new task
                     else:
-                        st.sidebar.error(f"Limit reached! You cannot add more than {LIMIT} tasks.")
+                        if len(st.session_state.tasks) < LIMIT:
+                            st.session_state.tasks.append(new_task_obj)
+                            save_to_laptop()
+                            st.session_state.confirm_delete_list = False
+                            st.rerun()
+                        else:
+                            st.sidebar.error(f"Limit reached! You cannot add more than {LIMIT} tasks.")
                 else:
                     st.sidebar.warning("Task name cannot be blank!")
 
-        # --- MOVE TASK SECTION ---
+        # --- EDIT TASK PANEL ---
+        if st.session_state.show_edit_dropdown and len(st.session_state.tasks) > 0:
+            st.markdown("---")
+            st.html(f"{STYLE_WRAPPER}<b>Select task number to load into editor:</b></div>")
+            
+            edit_col1, edit_col2 = st.columns([3, 1])
+            max_tasks = len(st.session_state.tasks)
+            
+            with edit_col1:
+                selected_edit_num = st.number_input(label="Select Task to Edit", min_value=1, max_value=max_tasks, step=1, key="edit_task_num", label_visibility="collapsed")
+            
+            with edit_col2:
+                st.html("<div style='margin-top: 2px;'></div>") 
+                if st.button("Load Task", key="btn_confirm_edit", use_container_width=True):
+                    edit_idx = int(selected_edit_num) - 1
+                    target_task = st.session_state.tasks[edit_idx]
+                    
+                    st.session_state.editing_index = edit_idx
+                    st.session_state.edit_task_name = target_task["name"]
+                    st.session_state.edit_prereq_name = target_task["prereq"] if target_task["prereq"] else ""
+                    st.session_state.show_edit_dropdown = False
+                    st.rerun()
+
+        # --- MOVE TASK PANEL ---
         if st.session_state.show_move_dropdowns and len(st.session_state.tasks) > 1:
             st.markdown("---")
             st.html(f"{STYLE_WRAPPER}<b>Rearrange Task Order:</b></div>")
@@ -369,6 +453,10 @@ if st.session_state.mode == "adding":
                         moved_task = st.session_state.tasks.pop(from_idx)
                         st.session_state.tasks.insert(to_idx, moved_task)
                         
+                        # Adjust active editing index if positions shifted
+                        if st.session_state.editing_index == from_idx:
+                            st.session_state.editing_index = to_idx
+                        
                         save_to_laptop()
                         st.session_state.show_move_dropdowns = False
                         st.rerun()
@@ -377,7 +465,7 @@ if st.session_state.mode == "adding":
             st.sidebar.warning("You need at least 2 tasks in your list to rearrange them!")
             st.session_state.show_move_dropdowns = False
 
-        # --- DELETE SINGLE TASK SECTION ---
+        # --- DELETE TASK PANEL ---
         if st.session_state.show_delete_dropdown and len(st.session_state.tasks) > 0:
             st.markdown("---")
             st.html(f"{STYLE_WRAPPER}Select task number to remove permanently:</div>")
@@ -389,10 +477,18 @@ if st.session_state.mode == "adding":
                 selected_num = st.number_input(label="Select Task Number", min_value=1, max_value=max_tasks, step=1, key="delete_task_num", label_visibility="collapsed")
             
             with del_col2:
-                st.html("<div style='margin-top: 5px;'></div>") 
+                st.html("<div style='margin-top: 2px;'></div>") 
                 if st.button("Confirm Delete", key="btn_confirm_delete", use_container_width=True):
                     del_idx = int(selected_num) - 1
                     del st.session_state.tasks[del_idx]
+                    
+                    if st.session_state.editing_index == del_idx:
+                        st.session_state.editing_index = None
+                        st.session_state.edit_task_name = ""
+                        st.session_state.edit_prereq_name = ""
+                    elif st.session_state.editing_index is not None and st.session_state.editing_index > del_idx:
+                        st.session_state.editing_index -= 1
+                        
                     save_to_laptop()
                     st.session_state.show_delete_dropdown = False
                     st.rerun()
@@ -465,6 +561,9 @@ elif st.session_state.mode == "working":
             st.session_state.mode = "adding"
             st.session_state.affirmation = None
             st.session_state.list_name = None
+            st.session_state.editing_index = None
+            st.session_state.edit_task_name = ""
+            st.session_state.edit_prereq_name = ""
             save_to_laptop()
             st.rerun()
             
