@@ -310,6 +310,7 @@ if st.session_state.mode == "adding":
             form_title = "Enter a task you would like to add:"
             add_button_label = "Add Task"
 
+        # Using a dedicated form purely for task input guarantees Enter key triggers "Add/Save Task"
         with st.form(key="input_form", clear_on_submit=True):
             st.html(f"<div style='color: purple; font-family: {FONT_FAMILY};'>{form_title}</div>")
             task_text = st.text_input(
@@ -328,58 +329,26 @@ if st.session_state.mode == "adding":
             # --- OPTION A: 3x2 ACTION GRID ---
             row1_col1, row1_col2, row1_col3 = st.columns(3)
             with row1_col1:
+                # FIRST SUBMIT BUTTON: Pressing ENTER will strictly execute this button!
                 submit_task = st.form_submit_button(add_button_label, key="btn_add", use_container_width=True)
-                if submit_task:
-                    st.session_state.confirm_delete_list = False  # Reset on action
 
             with row1_col2:
                 edit_task_click = st.form_submit_button("Edit Task", key="btn_edit", use_container_width=True)
-                if edit_task_click:
-                    st.session_state.show_edit_dropdown = True
-                    st.session_state.show_move_dropdowns = False
-                    st.session_state.show_delete_dropdown = False
-                    st.session_state.confirm_delete_list = False  # Reset on action
 
             with row1_col3:
                 move_task_click = st.form_submit_button("Move Task", key="btn_move", use_container_width=True)
-                if move_task_click:
-                    st.session_state.show_move_dropdowns = True
-                    st.session_state.show_edit_dropdown = False
-                    st.session_state.show_delete_dropdown = False
-                    st.session_state.confirm_delete_list = False  # Reset on action
 
             row2_col1, row2_col2 = st.columns(2)
             with row2_col1:
                 delete_task_click = st.form_submit_button("Delete Task", key="btn_delete_task", use_container_width=True)
-                if delete_task_click:
-                    st.session_state.show_delete_dropdown = True
-                    st.session_state.show_edit_dropdown = False
-                    st.session_state.show_move_dropdowns = False
-                    st.session_state.confirm_delete_list = False  # Reset on action
 
             with row2_col2:
                 black_btn_label = "Yes, All" if st.session_state.confirm_delete_list else "Delete List"
                 delete_list_click = st.form_submit_button(black_btn_label, key="btn_delete_list", use_container_width=True)
-                if delete_list_click:
-                    if not st.session_state.confirm_delete_list:
-                        st.session_state.confirm_delete_list = True
-                        st.rerun()
-                    else:
-                        st.session_state.tasks = []
-                        st.session_state.current_index = 0
-                        st.session_state.list_name = None
-                        st.session_state.confirm_delete_list = False
-                        st.session_state.show_delete_dropdown = False
-                        st.session_state.show_move_dropdowns = False
-                        st.session_state.show_edit_dropdown = False
-                        st.session_state.editing_index = None
-                        st.session_state.edit_task_name = ""
-                        st.session_state.edit_prereq_name = ""
-                        save_to_laptop()
-                        st.rerun()
 
-            # --- SUBMIT FORM HANDLER (ADD OR SAVE EDIT) ---
+            # --- PROCESS BUTTON CLICKS OUTSIDE FORM SUBMISSION DEFAULT ---
             if submit_task:
+                st.session_state.confirm_delete_list = False
                 if task_text.strip() != "":
                     new_task_obj = {
                         "name": task_text.strip(),
@@ -404,6 +373,45 @@ if st.session_state.mode == "adding":
                             st.sidebar.error(f"Limit reached! You cannot add more than {LIMIT} tasks.")
                 else:
                     st.sidebar.warning("Task name cannot be blank!")
+
+            elif edit_task_click:
+                st.session_state.show_edit_dropdown = True
+                st.session_state.show_move_dropdowns = False
+                st.session_state.show_delete_dropdown = False
+                st.session_state.confirm_delete_list = False
+                st.rerun()
+
+            elif move_task_click:
+                st.session_state.show_move_dropdowns = True
+                st.session_state.show_edit_dropdown = False
+                st.session_state.show_delete_dropdown = False
+                st.session_state.confirm_delete_list = False
+                st.rerun()
+
+            elif delete_task_click:
+                st.session_state.show_delete_dropdown = True
+                st.session_state.show_edit_dropdown = False
+                st.session_state.show_move_dropdowns = False
+                st.session_state.confirm_delete_list = False
+                st.rerun()
+
+            elif delete_list_click:
+                if not st.session_state.confirm_delete_list:
+                    st.session_state.confirm_delete_list = True
+                    st.rerun()
+                else:
+                    st.session_state.tasks = []
+                    st.session_state.current_index = 0
+                    st.session_state.list_name = None
+                    st.session_state.confirm_delete_list = False
+                    st.session_state.show_delete_dropdown = False
+                    st.session_state.show_move_dropdowns = False
+                    st.session_state.show_edit_dropdown = False
+                    st.session_state.editing_index = None
+                    st.session_state.edit_task_name = ""
+                    st.session_state.edit_prereq_name = ""
+                    save_to_laptop()
+                    st.rerun()
 
         # --- EDIT TASK PANEL ---
         if st.session_state.show_edit_dropdown and len(st.session_state.tasks) > 0:
