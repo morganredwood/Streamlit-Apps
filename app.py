@@ -287,7 +287,7 @@ if st.session_state.mode == "adding":
                     prefix = "✏️ " if is_editing_this else ""
                     
                     if t["prereq"]:
-                        st.html(f"{STYLE_WRAPPER}{i}. {prefix}<b>{t['name']}</b> <br><i>(Requires: {t['prereq']})</i></div><hr style='margin: 8px 0;'>")
+                        st.html(f"{STYLE_WRAPPER}{i}. {prefix}<b>{t['name']}</b> <br><i>(Notes: {t['prereq']})</i></div><hr style='margin: 8px 0;'>")
                     else:
                         st.html(f"{STYLE_WRAPPER}{i}. {prefix}<b>{t['name']}</b></div><hr style='margin: 8px 0;'>")
             else:
@@ -525,7 +525,7 @@ elif st.session_state.mode == "working":
         st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>{current_task['name']}</h1>")
         
         if current_task['prereq']:
-            st.warning(f"⚠️ **You need to finish this task first:** \n\n  {current_task['prereq']}")
+            st.warning(f"⚠️ **Remember:** \n\n  {current_task['prereq']}")
         
         st.write("")
         st.write("")
