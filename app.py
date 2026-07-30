@@ -287,7 +287,7 @@ if st.session_state.mode == "adding":
                     prefix = "✏️ " if is_editing_this else ""
                     
                     if t["prereq"]:
-                        st.html(f"{STYLE_WRAPPER}{i}. {prefix}<b>{t['name']}</b> <br><i>(Notes: {t['prereq']})</i></div><hr style='margin: 8px 0;'>")
+                        st.html(f"{STYLE_WRAPPER}{i}. {prefix}<b>{t['name']}</b> <br><i>({t['prereq']})</i></div><hr style='margin: 8px 0;'>")
                     else:
                         st.html(f"{STYLE_WRAPPER}{i}. {prefix}<b>{t['name']}</b></div><hr style='margin: 8px 0;'>")
             else:
