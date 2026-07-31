@@ -92,6 +92,7 @@ AFFIRMATIONS = [
 TEXT_COLOR = "black"  
 FONT_FAMILY = "Georgia"
 BLUE_TEXT_COLOR = "blue"  
+BROWN_TEXT_COLOR = "brown"
 
 STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
 
@@ -298,7 +299,7 @@ if st.session_state.mode == "adding":
             st.sidebar.error("Are you sure you want to delete the WHOLE list? This can't be undone.")
 
     with right_col:
-        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
+        st.html(f"<h2 style='text-align: center; margin-bottom: 20px; color: {BROWN_TEXT_COLOR}; font-family: {FONT_FAMILY};'>Build Your List</h2>")
         
         st.html(f"{STYLE_WRAPPER}Current task count: {len(st.session_state.tasks)} / {LIMIT}</div><br>")
 
