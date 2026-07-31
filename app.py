@@ -10,9 +10,9 @@ st.set_page_config(layout="wide")
 # ==============================================================================
 # 🌐 SUPABASE CLOUD DATABASE CONFIGURATION
 # ==============================================================================
-# REPLACE THESE WITH YOUR ACTUAL SUPABASE CREDENTIALS:
-SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL"
-SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY"
+# Pulls keys safely from Streamlit Cloud Secrets (or local .streamlit/secrets.toml)
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
 LIMIT = 500  # Hard locked cap capacity
 
@@ -629,4 +629,3 @@ elif st.session_state.mode == "working":
             st.session_state.form_version += 1
             save_to_cloud()
             st.rerun()
-            
