@@ -31,7 +31,7 @@ except Exception as e:
     st.error(f"⚠️ Supabase Error Detail: {e}")
 
 def load_from_cloud(user_key: str, pin: str):
-    """Fetches tasks if user_key and pin match. Blocks unauthorized access."""
+    """Fetches tasks if user_key and pin match."""
     clean_key = user_key.strip()
     clean_pin = pin.strip()
     
@@ -40,26 +40,30 @@ def load_from_cloud(user_key: str, pin: str):
 
     try:
         response = supabase.table("tasks_db").select("*").eq("user_key", clean_key).execute()
+        
         if response.data:
             row = response.data[0]
             existing_pin = str(row.get("pin", "")).strip()
             
             # Verify PIN match
             if existing_pin == clean_pin:
+                # 🎯 Force session state to adopt the fetched tasks
                 st.session_state.tasks = row.get("tasks_data", [])
-                st.session_state.list_name = row.get("list_name", None)
+                st.session_state.list_name = row.get("list_name", "")
                 st.session_state.auth_error = None
+                st.session_state.db_status = f"🟢 Loaded {len(st.session_state.tasks)} tasks from cloud!"
             else:
                 st.session_state.auth_error = "❌ Incorrect PIN for this passcode!"
-                st.session_state.tasks = []
-                st.session_state.list_name = None
+                st.session_state.db_status = None
         else:
-            # New passcode: initialize clean session (PIN will be registered on first save)
+            # New passcode
             st.session_state.tasks = []
-            st.session_state.list_name = None
+            st.session_state.list_name = ""
             st.session_state.auth_error = None
+            st.session_state.db_status = "🟢 New Passcode Ready!"
+            
     except Exception as e:
-        st.sidebar.error(f"Error loading cloud data: {e}")
+        st.session_state.auth_error = f"Error loading cloud data: {e}"
 
 def load_from_cloud(user_key: str, pin: str):
     """Fetches tasks if user_key and pin match. Blocks unauthorized access."""
