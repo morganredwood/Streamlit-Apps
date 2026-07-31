@@ -11,8 +11,12 @@ st.set_page_config(layout="wide")
 # 🌐 SUPABASE CLOUD DATABASE CONFIGURATION
 # ==============================================================================
 # Pulls keys safely from Streamlit Cloud Secrets (or local .streamlit/secrets.toml)
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+except Exception as e:
+    SUPABASE_URL = ""
+    SUPABASE_KEY = ""
 
 LIMIT = 500  # Hard locked cap capacity
 
@@ -68,8 +72,18 @@ if "tasks" not in st.session_state:
 if "list_name" not in st.session_state:
     st.session_state.list_name = None
 
+# Store passcode in session state
 if "user_passcode" not in st.session_state:
     st.session_state.user_passcode = ""
+
+passcode_input = st.sidebar.text_input(
+    "Enter a unique key to load and auto-sync your tasks across sessions.",
+    value=st.session_state.passcode,
+    key="passcode_key"
+)
+
+if passcode_input:
+    st.session_state.user_passcode = passcode_input
 
 if "uploader_id" not in st.session_state:
     st.session_state.uploader_id = 0
@@ -187,7 +201,7 @@ with st.sidebar:
     
     # 🔑 USER PASSCODE FIELD
     passcode_input = st.text_input(
-        label="Enter Passcode / Username",
+        label="Enter a unique key to load and auto-sync your tasks across sessions:",
         value=st.session_state.user_passcode,
         placeholder="e.g. kid1 or family",
         key="passcode_field"
@@ -195,9 +209,16 @@ with st.sidebar:
 
     if passcode_input != st.session_state.user_passcode:
         st.session_state.user_passcode = passcode_input
+        st.session_state.uploader_id = passcode_input
+
         if passcode_input.strip():
             load_from_cloud(passcode_input)
             st.rerun()
+
+    if st.session_state.user_passcode:
+        st.sidebar.success(f"🟢 Synced as: **{st.session_state.user_passcode}**")
+    else:
+        st.sidebar.info("Enter a passcode above to save tasks to the cloud.")
 
     st.markdown("---")
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Backup</h3>")
@@ -413,6 +434,7 @@ if st.session_state.mode == "adding":
                     else:
                         if len(st.session_state.tasks) < LIMIT:
                             st.session_state.tasks.append(new_task_obj)
+                            st.session_state.affirmation = None
                             st.session_state.edit_task_name = ""
                             st.session_state.edit_prereq_name = ""
                             st.session_state.form_version += 1
