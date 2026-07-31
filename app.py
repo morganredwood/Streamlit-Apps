@@ -76,12 +76,11 @@ if "list_name" not in st.session_state:
 if "user_passcode" not in st.session_state:
     st.session_state.user_passcode = ""
 
-passcode_input = st.text_input(
-        label="Enter a unique key to load and auto-sync your tasks across sessions:",
-        value=st.session_state.user_passcode,
-        placeholder="e.g. kid1 or family",
-        key="passcode_field"
-    )
+passcode_input = st.sidebar.text_input(
+    "Enter a unique key to load and auto-sync your tasks across sessions.",
+    value=st.session_state.user_passcode,
+    key="passcode_key"
+)
 
 if passcode_input:
     st.session_state.user_passcode = passcode_input
