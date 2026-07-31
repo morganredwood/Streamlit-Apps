@@ -411,7 +411,7 @@ if st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Executive Function Assistant</h1>")
     
     if not (st.session_state.user_passcode.strip() and st.session_state.user_pin.strip()):
-        st.info("👈 Don't forget your Passcode and PIN in the sidebar!")
+        st.info("👈 Save your progress by creating a Passcode and PIN in the sidebar, or enter an existing one to retrieve past work! ")
 
     left_col, right_col = st.columns([1.5, 1.2], gap="large")
 
