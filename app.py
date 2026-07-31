@@ -69,14 +69,18 @@ def save_to_cloud():
     if not user_key or not pin:
         return
 
+    # Fallback to empty string if list_name is None
+    current_name = st.session_state.get("list_name") or ""
+
     try:
         payload = {
             "user_key": user_key,
             "pin": pin,
-            "list_name": st.session_state.list_name,
+            "list_name": current_name,
             "tasks_data": st.session_state.tasks
         }
         supabase.table("tasks_db").upsert(payload).execute()
+        st.sidebar.toast("☁️ Saved to cloud!", icon="✅")
     except Exception as e:
         st.sidebar.error(f"Failed to auto-save to cloud: {e}")
 
@@ -670,4 +674,3 @@ elif st.session_state.mode == "working":
             st.session_state.form_version += 1
             save_to_cloud()
             st.rerun()
-            
