@@ -30,35 +30,52 @@ try:
 except Exception as e:
     st.error(f"⚠️ Supabase Error Detail: {e}")
 
-def load_from_cloud(user_key: str):
-    """Fetches tasks and list name for a specific user passcode from Supabase."""
-    if not user_key.strip():
+def load_from_cloud(user_key: str, pin: str):
+    """Fetches tasks if user_key and pin match. Blocks unauthorized access."""
+    clean_key = user_key.strip()
+    clean_pin = pin.strip()
+    
+    if not clean_key or not clean_pin:
         return
+
     try:
-        response = supabase.table("tasks_db").select("*").eq("user_key", user_key.strip()).execute()
+        response = supabase.table("tasks_db").select("*").eq("user_key", clean_key).execute()
         if response.data:
             row = response.data[0]
-            st.session_state.tasks = row.get("tasks_data", [])
-            st.session_state.list_name = row.get("list_name", None)
+            existing_pin = str(row.get("pin", "")).strip()
+            
+            # Verify PIN match
+            if existing_pin == clean_pin:
+                st.session_state.tasks = row.get("tasks_data", [])
+                st.session_state.list_name = row.get("list_name", None)
+                st.session_state.auth_error = None
+            else:
+                st.session_state.auth_error = "❌ Incorrect PIN for this passcode!"
+                st.session_state.tasks = []
+                st.session_state.list_name = None
         else:
-            # If user key doesn't exist yet, start fresh for them
+            # New passcode: initialize clean session (PIN will be registered on first save)
             st.session_state.tasks = []
             st.session_state.list_name = None
+            st.session_state.auth_error = None
     except Exception as e:
         st.sidebar.error(f"Error loading cloud data: {e}")
 
 def save_to_cloud():
-    """Saves current tasks and list name to Supabase under the active user_key."""
+    """Saves current state to Supabase only if user_key and pin are valid."""
     user_key = st.session_state.get("user_passcode", "").strip()
-    if not user_key:
+    pin = st.session_state.get("user_pin", "").strip()
+    
+    if not user_key or not pin:
         return
+
     try:
         payload = {
             "user_key": user_key,
+            "pin": pin,
             "list_name": st.session_state.list_name,
             "tasks_data": st.session_state.tasks
         }
-        # Upsert creates the row if new, or updates it if user_key exists
         supabase.table("tasks_db").upsert(payload).execute()
     except Exception as e:
         st.sidebar.error(f"Failed to auto-save to cloud: {e}")
@@ -72,9 +89,15 @@ if "tasks" not in st.session_state:
 if "list_name" not in st.session_state:
     st.session_state.list_name = None
 
-# Store passcode in session state
+# Passcode & PIN session trackers
 if "user_passcode" not in st.session_state:
     st.session_state.user_passcode = ""
+
+if "user_pin" not in st.session_state:
+    st.session_state.user_pin = ""
+
+if "auth_error" not in st.session_state:
+    st.session_state.auth_error = None
 
 if "uploader_id" not in st.session_state:
     st.session_state.uploader_id = 0
@@ -190,25 +213,39 @@ st.html(f"""
 with st.sidebar:
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>☁️ Cloud Sync Login</h3>")
     
-    # 🔑 USER PASSCODE FIELD
+    # 🔑 USER PASSCODE & PIN FIELDS
     passcode_input = st.text_input(
-        label="Enter a unique key to load and auto-sync your tasks across sessions:",
+        label="Enter Passcode:",
         value=st.session_state.user_passcode,
-        placeholder="e.g. kid1 or family",
+        placeholder="e.g. executive-tasks",
         key="passcode_field"
     )
 
-    if passcode_input != st.session_state.user_passcode:
+    pin_input = st.text_input(
+        label="Enter 4-Digit PIN:",
+        value=st.session_state.user_pin,
+        type="password",
+        max_chars=4,
+        placeholder="e.g. 1234",
+        key="pin_field"
+    )
+
+    # Trigger database authentication on input change
+    if passcode_input != st.session_state.user_passcode or pin_input != st.session_state.user_pin:
         st.session_state.user_passcode = passcode_input
+        st.session_state.user_pin = pin_input
         st.session_state.uploader_id = passcode_input
 
-        if passcode_input.strip():
-            load_from_cloud(passcode_input)
+        if passcode_input.strip() and pin_input.strip():
+            load_from_cloud(passcode_input, pin_input)
             st.rerun()
 
-    if st.session_state.user_passcode:
-        st.sidebar.success(f"🟢 Synced as: **{st.session_state.user_passcode}**")
-    
+    # Feedback indicators
+    if st.session_state.auth_error:
+        st.error(st.session_state.auth_error)
+    elif st.session_state.user_passcode and st.session_state.user_pin:
+        st.success(f"🟢 Authenticated: **{st.session_state.user_passcode}**")
+
     st.markdown("---")
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Backup</h3>")
     
@@ -320,8 +357,8 @@ with st.sidebar:
 if st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Executive Function Assistant</h1>")
     
-    if not st.session_state.user_passcode.strip():
-        st.info("👈 Don't forget your Passcode!")
+    if not (st.session_state.user_passcode.strip() and st.session_state.user_pin.strip()):
+        st.info("👈 Don't forget your Passcode and PIN in the sidebar!")
 
     left_col, right_col = st.columns([1.5, 1.2], gap="large")
 
@@ -633,3 +670,4 @@ elif st.session_state.mode == "working":
             st.session_state.form_version += 1
             save_to_cloud()
             st.rerun()
+            
