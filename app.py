@@ -24,7 +24,7 @@ def init_supabase() -> Client:
 try:
     supabase = init_supabase()
 except Exception as e:
-    st.error("⚠️ Failed to initialize Supabase connection. Check your URL and Key.")
+    st.error(f"⚠️ Supabase Error Detail: {e}")
 
 def load_from_cloud(user_key: str):
     """Fetches tasks and list name for a specific user passcode from Supabase."""
