@@ -98,8 +98,6 @@ def reset_transient_panels():
 # ==============================================================================
 TEXT_COLOR = "black"  
 FONT_FAMILY = "Georgia"
-BLUE_TEXT_COLOR = "blue"  
-BROWN_TEXT_COLOR = "brown"
 
 STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
 
@@ -338,10 +336,10 @@ if st.session_state.mode == "adding":
                 label_visibility="collapsed"
             )
 
-            # --- OPTION A: 3x2 ACTION GRID ---
+            # --- 3x2 ACTION GRID ---
             row1_col1, row1_col2, row1_col3 = st.columns(3)
             with row1_col1:
-                # First submit button: Pressing ENTER executes this button
+                # First submit button: Pressing ENTER executes this default action
                 submit_task = st.form_submit_button(add_button_label, key="btn_add", use_container_width=True)
 
             with row1_col2:
@@ -358,35 +356,8 @@ if st.session_state.mode == "adding":
                 black_btn_label = "Yes, All" if st.session_state.confirm_delete_list else "Delete List"
                 delete_list_click = st.form_submit_button(black_btn_label, key="btn_delete_list", use_container_width=True)
 
-            # --- PROCESS BUTTON CLICKS OUTSIDE FORM SUBMISSION DEFAULT ---
-            if submit_task:
-                reset_transient_panels()
-                if task_text.strip() != "":
-                    new_task_obj = {
-                        "name": task_text.strip(),
-                        "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
-                    }
-                    
-                    if st.session_state.editing_index is not None:
-                        idx = st.session_state.editing_index
-                        if idx < len(st.session_state.tasks):
-                            st.session_state.tasks[idx] = new_task_obj
-                        st.session_state.editing_index = None
-                        st.session_state.edit_task_name = ""
-                        st.session_state.edit_prereq_name = ""
-                        save_to_laptop()
-                        st.rerun()
-                    else:
-                        if len(st.session_state.tasks) < LIMIT:
-                            st.session_state.tasks.append(new_task_obj)
-                            save_to_laptop()
-                            st.rerun()
-                        else:
-                            st.sidebar.error(f"Limit reached! You cannot add more than {LIMIT} tasks.")
-                else:
-                    st.sidebar.warning("Task name cannot be blank!")
-
-            elif edit_task_click:
+            # --- PROCESS FORM SUBMISSIONS & TOOL BUTTON CLICKS ---
+            if edit_task_click:
                 st.session_state.show_edit_dropdown = True
                 st.session_state.show_move_dropdowns = False
                 st.session_state.show_delete_dropdown = False
@@ -425,6 +396,39 @@ if st.session_state.mode == "adding":
                     save_to_laptop()
                     st.rerun()
 
+            elif submit_task:
+                # Always close transient panels when adding or saving
+                reset_transient_panels()
+                
+                if task_text.strip() != "":
+                    new_task_obj = {
+                        "name": task_text.strip(),
+                        "prereq": prereq_text.strip() if prereq_text.strip() != "" else None
+                    }
+                    
+                    if st.session_state.editing_index is not None:
+                        # Save active edits
+                        idx = st.session_state.editing_index
+                        if idx < len(st.session_state.tasks):
+                            st.session_state.tasks[idx] = new_task_obj
+                        
+                        # Hard reset editing tracker so app returns to standard "Add Task" mode
+                        st.session_state.editing_index = None
+                        st.session_state.edit_task_name = ""
+                        st.session_state.edit_prereq_name = ""
+                        save_to_laptop()
+                        st.rerun()
+                    else:
+                        # Add new task
+                        if len(st.session_state.tasks) < LIMIT:
+                            st.session_state.tasks.append(new_task_obj)
+                            save_to_laptop()
+                            st.rerun()
+                        else:
+                            st.sidebar.error(f"Limit reached! You cannot add more than {LIMIT} tasks.")
+                else:
+                    st.sidebar.warning("Task name cannot be blank!")
+
         # --- EDIT TASK PANEL ---
         if st.session_state.show_edit_dropdown and len(st.session_state.tasks) > 0:
             st.markdown("---")
@@ -445,7 +449,7 @@ if st.session_state.mode == "adding":
                     st.session_state.editing_index = edit_idx
                     st.session_state.edit_task_name = target_task["name"]
                     st.session_state.edit_prereq_name = target_task["prereq"] if target_task["prereq"] else ""
-                    # Panel closes immediately as soon as the task is loaded into the form
+                    # Panel closes immediately when loaded
                     st.session_state.show_edit_dropdown = False
                     st.rerun()
 
