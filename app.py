@@ -253,7 +253,6 @@ st.html(f"""
 with st.sidebar:
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>☁️ Cloud Sync Login</h3>")
     
-    # Direct binding to st.session_state keys
     passcode_input = st.text_input(
         label="Enter Passcode:",
         key="user_passcode",
@@ -268,11 +267,15 @@ with st.sidebar:
         placeholder="e.g. 1234"
     )
 
-    # Trigger load if values are present and changed
+    # 1. Manual Sync Button
     if st.button("🔐 Sync / Authenticate", use_container_width=True):
         if passcode_input.strip() and pin_input.strip():
             load_from_cloud(passcode_input, pin_input)
             st.rerun()
+
+    # 2. AUTO-LOAD: If authenticated but tasks are missing, fetch automatically!
+    if passcode_input.strip() and pin_input.strip() and not st.session_state.get("tasks"):
+        load_from_cloud(passcode_input, pin_input)
 
     # Display persistent status messages (won't disappear on rerun!)
     if st.session_state.get("auth_error"):
