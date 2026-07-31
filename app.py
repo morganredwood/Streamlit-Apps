@@ -213,9 +213,7 @@ with st.sidebar:
 
     if st.session_state.user_passcode:
         st.sidebar.success(f"🟢 Synced as: **{st.session_state.user_passcode}**")
-    else:
-        st.sidebar.info("Enter a passcode above to save tasks to the cloud.")
-
+    
     st.markdown("---")
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Backup</h3>")
     
