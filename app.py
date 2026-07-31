@@ -61,14 +61,47 @@ def load_from_cloud(user_key: str, pin: str):
     except Exception as e:
         st.sidebar.error(f"Error loading cloud data: {e}")
 
+def load_from_cloud(user_key: str, pin: str):
+    """Fetches tasks if user_key and pin match. Blocks unauthorized access."""
+    clean_key = user_key.strip()
+    clean_pin = pin.strip()
+    
+    if not clean_key or not clean_pin:
+        return
+
+    try:
+        response = supabase.table("tasks_db").select("*").eq("user_key", clean_key).execute()
+        if response.data:
+            row = response.data[0]
+            existing_pin = str(row.get("pin", "")).strip()
+            
+            # Verify PIN match
+            if existing_pin == clean_pin:
+                st.session_state.tasks = row.get("tasks_data", [])
+                st.session_state.list_name = row.get("list_name", None)
+                st.session_state.auth_error = None
+                st.session_state.db_status = "🟢 Authenticated & Connected!"
+            else:
+                st.session_state.auth_error = "❌ Incorrect PIN for this passcode!"
+                st.session_state.db_status = None
+                st.session_state.tasks = []
+                st.session_state.list_name = None
+        else:
+            # New passcode: initialize clean session
+            st.session_state.tasks = []
+            st.session_state.list_name = None
+            st.session_state.auth_error = None
+            st.session_state.db_status = "🟢 New Passcode Ready! (Will create row on first task save)"
+    except Exception as e:
+        st.session_state.auth_error = f"Error loading cloud data: {e}"
+
 def save_to_cloud():
-    """Saves current state to Supabase and provides direct visual feedback."""
+    """Saves current state to Supabase using persistent session state."""
     user_key = st.session_state.get("user_passcode", "").strip()
     pin = st.session_state.get("user_pin", "").strip()
     
-    # 🔍 DEBUG: Show us exactly what Python sees in session state
     if not user_key or not pin:
-        st.sidebar.error(f"⚠️ Save Skipped! Passcode: '{user_key}', PIN: '{pin}'")
+        st.session_state.db_status = f"⚠️ Save Skipped: Passcode ('{user_key}') or PIN ('{pin}') missing from session!"
         return
 
     current_name = st.session_state.get("list_name") or ""
@@ -81,10 +114,9 @@ def save_to_cloud():
             "tasks_data": st.session_state.tasks
         }
         supabase.table("tasks_db").upsert(payload).execute()
-        st.sidebar.success("☁️ Saved to Supabase successfully!")
+        st.session_state.db_status = "✅ Successfully saved row to Supabase!"
     except Exception as e:
-        st.sidebar.error(f"Failed to auto-save to cloud: {e}")
-# ==============================================================================
+        st.session_state.db_status = f"❌ Supabase Error: {e}"# ==============================================================================
 # 🗂️ GLOBAL STATE INITIALIZATIONS
 # ==============================================================================
 if "tasks" not in st.session_state:
@@ -217,23 +249,33 @@ st.html(f"""
 with st.sidebar:
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>☁️ Cloud Sync Login</h3>")
     
-    # 🔑 USER PASSCODE & PIN FIELDS
+    # Direct binding to st.session_state keys
     passcode_input = st.text_input(
         label="Enter Passcode:",
-        value=st.session_state.user_passcode,
-        placeholder="e.g. executive-tasks",
-        key="passcode_field"
+        key="user_passcode",
+        placeholder="e.g. executive-tasks"
     )
 
     pin_input = st.text_input(
         label="Enter 4-Digit PIN:",
-        value=st.session_state.user_pin,
+        key="user_pin",
         type="password",
         max_chars=4,
-        placeholder="e.g. 1234",
-        key="pin_field"
+        placeholder="e.g. 1234"
     )
 
+    # Trigger load if values are present and changed
+    if st.button("🔐 Sync / Authenticate", use_container_width=True):
+        if passcode_input.strip() and pin_input.strip():
+            load_from_cloud(passcode_input, pin_input)
+            st.rerun()
+
+    # Display persistent status messages (won't disappear on rerun!)
+    if st.session_state.get("auth_error"):
+        st.error(st.session_state.auth_error)
+    elif st.session_state.get("db_status"):
+        st.info(st.session_state.db_status)
+        
     # Trigger database authentication on input change
     if passcode_input != st.session_state.user_passcode or pin_input != st.session_state.user_pin:
         st.session_state.user_passcode = passcode_input
