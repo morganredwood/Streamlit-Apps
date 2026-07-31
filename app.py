@@ -86,6 +86,13 @@ AFFIRMATIONS = [
     "⚡ Pure efficiency! You're doing amazing!"
 ]
 
+def reset_transient_panels():
+    """Helper function to close all temporary action dropdowns/prompts."""
+    st.session_state.show_edit_dropdown = False
+    st.session_state.show_move_dropdowns = False
+    st.session_state.show_delete_dropdown = False
+    st.session_state.confirm_delete_list = False
+
 # ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION
 # ==============================================================================
@@ -178,7 +185,8 @@ with st.sidebar:
         st.html(f"<div style='color: gray; font-size: 14px; font-family: {FONT_FAMILY}; margin-bottom: 2px;'>Export File Name:</div>")
         custom_name = st.text_input(
             label="Export File Name",
-            value=default_name,
+            value="",
+            placeholder=default_name,
             key="export_file_name_input",
             label_visibility="collapsed"
         )
@@ -187,7 +195,7 @@ with st.sidebar:
         if clean_name.lower().endswith(".json"):
             clean_name = clean_name[:-5]
         if not clean_name:
-            clean_name = "executive_tasks_backup"
+            clean_name = default_name
             
         final_export_filename = f"{clean_name}.json"
 
@@ -235,6 +243,7 @@ with st.sidebar:
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
                         st.session_state.editing_index = None
+                        reset_transient_panels()
                         
                         base_name, _ = os.path.splitext(uploaded_file.name)
                         st.session_state.list_name = base_name
@@ -253,6 +262,7 @@ with st.sidebar:
                         st.session_state.tasks.extend(imported_data)
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
+                        reset_transient_panels()
                         save_to_laptop()
                         st.rerun()
             else:
@@ -312,7 +322,7 @@ if st.session_state.mode == "adding":
             form_title = "Enter a task you would like to add:"
             add_button_label = "Add Task"
 
-        # Using a dedicated form purely for task input guarantees Enter key triggers "Add/Save Task"
+        # Dedicated form guarantees Enter key strictly triggers "Add Task" / "Save Changes"
         with st.form(key="input_form", clear_on_submit=True):
             st.html(f"<div style='color: green; font-family: {FONT_FAMILY};'>{form_title}</div>")
             task_text = st.text_input(
@@ -331,7 +341,7 @@ if st.session_state.mode == "adding":
             # --- OPTION A: 3x2 ACTION GRID ---
             row1_col1, row1_col2, row1_col3 = st.columns(3)
             with row1_col1:
-                # FIRST SUBMIT BUTTON: Pressing ENTER will strictly execute this button!
+                # First submit button: Pressing ENTER executes this button
                 submit_task = st.form_submit_button(add_button_label, key="btn_add", use_container_width=True)
 
             with row1_col2:
@@ -350,7 +360,7 @@ if st.session_state.mode == "adding":
 
             # --- PROCESS BUTTON CLICKS OUTSIDE FORM SUBMISSION DEFAULT ---
             if submit_task:
-                st.session_state.confirm_delete_list = False
+                reset_transient_panels()
                 if task_text.strip() != "":
                     new_task_obj = {
                         "name": task_text.strip(),
@@ -400,15 +410,15 @@ if st.session_state.mode == "adding":
             elif delete_list_click:
                 if not st.session_state.confirm_delete_list:
                     st.session_state.confirm_delete_list = True
+                    st.session_state.show_edit_dropdown = False
+                    st.session_state.show_move_dropdowns = False
+                    st.session_state.show_delete_dropdown = False
                     st.rerun()
                 else:
                     st.session_state.tasks = []
                     st.session_state.current_index = 0
                     st.session_state.list_name = None
-                    st.session_state.confirm_delete_list = False
-                    st.session_state.show_delete_dropdown = False
-                    st.session_state.show_move_dropdowns = False
-                    st.session_state.show_edit_dropdown = False
+                    reset_transient_panels()
                     st.session_state.editing_index = None
                     st.session_state.edit_task_name = ""
                     st.session_state.edit_prereq_name = ""
@@ -510,6 +520,7 @@ if st.session_state.mode == "adding":
                 st.session_state.mode = "working"
                 st.session_state.current_index = 0
                 st.session_state.affirmation = None
+                reset_transient_panels()
                 st.rerun()
             st.html("</div>")
 
@@ -572,6 +583,7 @@ elif st.session_state.mode == "working":
             st.session_state.mode = "adding"
             st.session_state.affirmation = None
             st.session_state.list_name = None
+            reset_transient_panels()
             st.session_state.editing_index = None
             st.session_state.edit_task_name = ""
             st.session_state.edit_prereq_name = ""
