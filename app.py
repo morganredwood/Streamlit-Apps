@@ -78,7 +78,7 @@ if "user_passcode" not in st.session_state:
 
 passcode_input = st.sidebar.text_input(
     "Enter a unique key to load and auto-sync your tasks across sessions.",
-    value=st.session_state.passcode,
+    value=st.session_state.user_passcode,
     key="passcode_key"
 )
 
