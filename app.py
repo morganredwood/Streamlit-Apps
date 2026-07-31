@@ -380,16 +380,7 @@ if st.session_state.mode == "adding":
                             save_to_cloud(st.session_state.user_passcode)
                         st.rerun()
                     else:
-                        st.error("Task limit reached (500 maximum).")
-    
-        with st.form(key=f"input_form_{ver_key}", clear_on_submit=False):
-            st.html(f"<div style='color: green; font-family: {FONT_FAMILY};'>{form_title}</div>")
-            task_text = st.text_input(
-                label="Task Input",
-                value=st.session_state.edit_task_name,
-                key=f"task_in_{ver_key}",
-                label_visibility="collapsed"
-            )                   
+                        st.error("Task limit reached (500 maximum).")              
     
             st.html(f"<div style='color: gray; font-family: {FONT_FAMILY};'>Enter a note you would like to add to your task. (Optional)</div>")
             prereq_text = st.text_input(
