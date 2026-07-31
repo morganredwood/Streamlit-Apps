@@ -90,7 +90,8 @@ AFFIRMATIONS = [
 # 🎨 CENTRAL STYLE CONFIGURATION
 # ==============================================================================
 TEXT_COLOR = "black"  
-FONT_FAMILY = "Georgia"  
+FONT_FAMILY = "Georgia"
+BLUE_TEXT_COLOR = "blue"  
 
 STYLE_WRAPPER = f"<div style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>"
 
@@ -274,9 +275,9 @@ if st.session_state.mode == "adding":
 
     with left_col:
         if st.session_state.list_name:
-            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List: <span style='font-weight: normal;'>{st.session_state.list_name}</span></h3>"
+            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Current Task List: <span style='color: blue; font-weight: normal;'>{st.session_state.list_name}</span></h3>"
         else:
-            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Your Task List: <span style='color: gray; font-weight: normal;'><i>(Assigned Export List File name appears here.)</i></span></h3>"
+            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Current Task List: <span style='color: gray; font-weight: normal;'><i>(The list name you save when you export the file will appear here.)</i></span></h3>"
         st.html(header_html)
         
         with st.container(height=450, border=True):
@@ -319,7 +320,7 @@ if st.session_state.mode == "adding":
                 label_visibility="collapsed"
             )
             
-            st.html(f"<div style='color: gray; font-family: {FONT_FAMILY};'>What must be completed first? (Optional)</div>")
+            st.html(f"<div style='color: gray; font-family: {FONT_FAMILY};'>Enter a note you would like to add to your task. (Optional)</div>")
             prereq_text = st.text_input(
                 label="Prerequisite Input",
                 value=st.session_state.edit_prereq_name,
@@ -525,7 +526,7 @@ elif st.session_state.mode == "working":
         st.html(f"<h1 style='text-align: center; margin-bottom: 20px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>{current_task['name']}</h1>")
         
         if current_task['prereq']:
-            st.warning(f"⚠️ **Remember:** \n\n  {current_task['prereq']}")
+            st.warning(f"⚠️ **Worth Noting:** \n\n  {current_task['prereq']}")
         
         st.write("")
         st.write("")
