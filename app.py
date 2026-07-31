@@ -342,7 +342,6 @@ if st.session_state.mode == "adding":
                 for i, t in enumerate(st.session_state.tasks, 1):
                     is_editing_this = (st.session_state.editing_index == (i - 1))
                     prefix = "✏️ " if is_editing_this else ""
-                    
                     if t["prereq"]:
                         st.html(f"{STYLE_WRAPPER}{i}. {prefix}<b>{t['name']}</b> <br><i>({t['prereq']})</i></div><hr style='margin: 8px 0;'>")
                     else:
