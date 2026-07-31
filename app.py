@@ -375,8 +375,8 @@ if st.session_state.mode == "adding":
                 value=st.session_state.edit_task_name,
                 key=f"task_in_{ver_key}",
                 label_visibility="collapsed"
-            )
-            
+            )                   
+    
             st.html(f"<div style='color: gray; font-family: {FONT_FAMILY};'>Enter a note you would like to add to your task. (Optional)</div>")
             prereq_text = st.text_input(
                 label="Prerequisite Input",
