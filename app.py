@@ -276,7 +276,7 @@ if st.session_state.mode == "adding":
 
     with left_col:
         if st.session_state.list_name:
-            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Current Task List: <span style='color: green; font-weight: normal;'>{st.session_state.list_name}</span></h3>"
+            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Current Task List: <span style='color: purple; font-weight: normal;'>{st.session_state.list_name}</span></h3>"
         else:
             header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Current Task List: <span style='color: gray; font-weight: normal;'><i>(The list name you save when you export the file will appear here.)</i></span></h3>"
         st.html(header_html)
