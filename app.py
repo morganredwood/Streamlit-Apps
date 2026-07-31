@@ -76,11 +76,6 @@ if "list_name" not in st.session_state:
 if "user_passcode" not in st.session_state:
     st.session_state.user_passcode = ""
 
-passcode_input = st.sidebar.text_input
-
-if passcode_input:
-    st.session_state.user_passcode = passcode_input
-
 if "uploader_id" not in st.session_state:
     st.session_state.uploader_id = 0
 
@@ -368,18 +363,7 @@ if st.session_state.mode == "adding":
         ver_key = f"v{st.session_state.form_version}_e{st.session_state.editing_index}"
 
         with st.form(key=f"input_form_{ver_key}", clear_on_submit=True):
-            new_task = st.text_input("Enter a task you would like to add:")
-            submitted = st.form_submit_button("Add Task")
-            if submitted:
-                task_text = new_task.strip()
-                if task_text:
-                    if len(st.session_state.tasks) < 500:
-                        st.session_state.tasks.append(task_text)
-                        if st.session_state.user_passcode:
-                            save_to_cloud(st.session_state.user_passcode)
-                        st.rerun()
-                    else:
-                        st.error("Task limit reached (500 maximum).")              
+            task_text = st.text_input("Enter a task you would like to add:", value=st.session_state.edit_task_name)             
     
             st.html(f"<div style='color: gray; font-family: {FONT_FAMILY};'>Enter a note you would like to add to your task. (Optional)</div>")
             prereq_text = st.text_input(
