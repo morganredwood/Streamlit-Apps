@@ -62,14 +62,15 @@ def load_from_cloud(user_key: str, pin: str):
         st.sidebar.error(f"Error loading cloud data: {e}")
 
 def save_to_cloud():
-    """Saves current state to Supabase only if user_key and pin are valid."""
+    """Saves current state to Supabase and provides direct visual feedback."""
     user_key = st.session_state.get("user_passcode", "").strip()
     pin = st.session_state.get("user_pin", "").strip()
     
+    # 🔍 DEBUG: Show us exactly what Python sees in session state
     if not user_key or not pin:
+        st.sidebar.error(f"⚠️ Save Skipped! Passcode: '{user_key}', PIN: '{pin}'")
         return
 
-    # Fallback to empty string if list_name is None
     current_name = st.session_state.get("list_name") or ""
 
     try:
@@ -80,10 +81,9 @@ def save_to_cloud():
             "tasks_data": st.session_state.tasks
         }
         supabase.table("tasks_db").upsert(payload).execute()
-        st.sidebar.toast("☁️ Saved to cloud!", icon="✅")
+        st.sidebar.success("☁️ Saved to Supabase successfully!")
     except Exception as e:
         st.sidebar.error(f"Failed to auto-save to cloud: {e}")
-
 # ==============================================================================
 # 🗂️ GLOBAL STATE INITIALIZATIONS
 # ==============================================================================
