@@ -445,6 +445,7 @@ if st.session_state.mode == "adding":
                     st.session_state.editing_index = edit_idx
                     st.session_state.edit_task_name = target_task["name"]
                     st.session_state.edit_prereq_name = target_task["prereq"] if target_task["prereq"] else ""
+                    # Panel closes immediately as soon as the task is loaded into the form
                     st.session_state.show_edit_dropdown = False
                     st.rerun()
 
