@@ -326,7 +326,7 @@ if st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Executive Function Assistant</h1>")
     
     if not st.session_state.user_passcode.strip():
-        st.info("👈 Please enter a Passcode or Username in the sidebar to start auto-syncing your tasks!")
+        st.info("👈 Don't forget your Passcode!")
 
     left_col, right_col = st.columns([1.5, 1.2], gap="large")
 
