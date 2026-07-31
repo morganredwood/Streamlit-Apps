@@ -2,40 +2,74 @@ import streamlit as st
 import json
 import random
 import os
+from supabase import create_client, Client
 
-# 🚀 Unlocks the entire width of your monitor, removing restricted side margins
+# 🚀 Unlocks full monitor width
 st.set_page_config(layout="wide")
 
 # ==============================================================================
-# 🗂️ LOCAL FILE SYSTEM PERSISTENCE (LAPTOP SERVER MODE)
+# 🌐 SUPABASE CLOUD DATABASE CONFIGURATION
 # ==============================================================================
-DB_FILE = "tasks.json"
+# Pulls keys safely from Streamlit Cloud Secrets (or local .streamlit/secrets.toml)
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+
 LIMIT = 500  # Hard locked cap capacity
 
-# Load tasks directly from laptop hard drive on startup
-if "tasks" not in st.session_state:
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r") as f:
-                st.session_state.tasks = json.load(f)
-        except Exception:
-            st.session_state.tasks = []
-    else:
-        st.session_state.tasks = []
+@st.cache_resource
+def init_supabase() -> Client:
+    """Initializes and caches the Supabase database connection."""
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def save_to_laptop():
-    """Writes the current task list directly to the local JSON file on your laptop."""
+try:
+    supabase = init_supabase()
+except Exception as e:
+    st.error("⚠️ Failed to initialize Supabase connection. Check your URL and Key.")
+
+def load_from_cloud(user_key: str):
+    """Fetches tasks and list name for a specific user passcode from Supabase."""
+    if not user_key.strip():
+        return
     try:
-        with open(DB_FILE, "w") as f:
-            json.dump(st.session_state.tasks, f, indent=2)
+        response = supabase.table("tasks_db").select("*").eq("user_key", user_key.strip()).execute()
+        if response.data:
+            row = response.data[0]
+            st.session_state.tasks = row.get("tasks_data", [])
+            st.session_state.list_name = row.get("list_name", None)
+        else:
+            # If user key doesn't exist yet, start fresh for them
+            st.session_state.tasks = []
+            st.session_state.list_name = None
     except Exception as e:
-        st.sidebar.error(f"Failed to save locally: {e}")
+        st.sidebar.error(f"Error loading cloud data: {e}")
+
+def save_to_cloud():
+    """Saves current tasks and list name to Supabase under the active user_key."""
+    user_key = st.session_state.get("user_passcode", "").strip()
+    if not user_key:
+        return
+    try:
+        payload = {
+            "user_key": user_key,
+            "list_name": st.session_state.list_name,
+            "tasks_data": st.session_state.tasks
+        }
+        # Upsert creates the row if new, or updates it if user_key exists
+        supabase.table("tasks_db").upsert(payload).execute()
+    except Exception as e:
+        st.sidebar.error(f"Failed to auto-save to cloud: {e}")
 
 # ==============================================================================
 # 🗂️ GLOBAL STATE INITIALIZATIONS
 # ==============================================================================
+if "tasks" not in st.session_state:
+    st.session_state.tasks = []
+
 if "list_name" not in st.session_state:
     st.session_state.list_name = None
+
+if "user_passcode" not in st.session_state:
+    st.session_state.user_passcode = ""
 
 if "uploader_id" not in st.session_state:
     st.session_state.uploader_id = 0
@@ -49,7 +83,6 @@ if "current_index" not in st.session_state:
 if "mode" not in st.session_state:
     st.session_state.mode = "adding"  
 
-# Form version counter to force clean re-mounting of text inputs on mode switch
 if "form_version" not in st.session_state:
     st.session_state.form_version = 0
 
@@ -113,7 +146,6 @@ COLOR_DELETE_LIST = "black"
 
 st.html(f"""
     <style>
-    /* 1. Prevent letter-splitting inside buttons while allowing clean word wraps */
     div[class*="st-key-btn_"] button {{
         width: 100% !important;
         padding-left: 4px !important;
@@ -128,7 +160,6 @@ st.html(f"""
         text-align: center !important;
     }}
 
-    /* 2. Responsive adjustment for tablets/medium screens */
     @media (max-width: 992px) {{
         div[data-testid="column"]:has(div[class*="st-key-btn_"]) {{
             min-width: 110px !important;
@@ -137,47 +168,39 @@ st.html(f"""
         }}
     }}
 
-    /* 3. Button Specific Colors */
-    div[class*="st-key-btn_add"] button p {{
-        color: {COLOR_ADD_TASK} !important;
-        font-family: {FONT_FAMILY} !important;
-    }}
-    div[class*="st-key-btn_edit"] button p {{
-        color: {COLOR_EDIT_TASK} !important;
-        font-family: {FONT_FAMILY} !important;
-    }}
-    div[class*="st-key-btn_move"] button p {{
-        color: {COLOR_MOVE_TASK} !important;
-        font-family: {FONT_FAMILY} !important;
-    }}
-    div[class*="st-key-btn_delete_task"] button p {{
-        color: {COLOR_DELETE_TASK} !important;
-        font-family: {FONT_FAMILY} !important;
-    }}
-    div[class*="st-key-btn_delete_list"] button p {{
-        color: {COLOR_DELETE_LIST} !important;
-        font-family: {FONT_FAMILY} !important;
-    }}
-    div[class*="st-key-btn_confirm_edit"] button p {{
-        color: {COLOR_EDIT_TASK} !important;
-        font-family: {FONT_FAMILY} !important;
-    }}
-    div[class*="st-key-btn_confirm_move"] button p {{
-        color: {COLOR_MOVE_TASK} !important;
-        font-family: {FONT_FAMILY} !important;
-    }}
-    div[class*="st-key-btn_confirm_delete"] button p {{
-        color: {COLOR_DELETE_TASK} !important;
-        font-family: {FONT_FAMILY} !important;
-    }}
+    div[class*="st-key-btn_add"] button p {{ color: {COLOR_ADD_TASK} !important; font-family: {FONT_FAMILY} !important; }}
+    div[class*="st-key-btn_edit"] button p {{ color: {COLOR_EDIT_TASK} !important; font-family: {FONT_FAMILY} !important; }}
+    div[class*="st-key-btn_move"] button p {{ color: {COLOR_MOVE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
+    div[class*="st-key-btn_delete_task"] button p {{ color: {COLOR_DELETE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
+    div[class*="st-key-btn_delete_list"] button p {{ color: {COLOR_DELETE_LIST} !important; font-family: {FONT_FAMILY} !important; }}
+    div[class*="st-key-btn_confirm_edit"] button p {{ color: {COLOR_EDIT_TASK} !important; font-family: {FONT_FAMILY} !important; }}
+    div[class*="st-key-btn_confirm_move"] button p {{ color: {COLOR_MOVE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
+    div[class*="st-key-btn_confirm_delete"] button p {{ color: {COLOR_DELETE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
     </style>
 """)
 
 # ==============================================================================
-# 💾 WORKSPACE UTILITIES & DUAL IMPORT ENGINE
+# 💾 SIDEBAR: CLOUD PASSCODE LOGIN & UTILITIES
 # ==============================================================================
 with st.sidebar:
-    st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Utilities</h3>")
+    st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>☁️ Cloud Sync Login</h3>")
+    
+    # 🔑 USER PASSCODE FIELD
+    passcode_input = st.text_input(
+        label="Enter Passcode / Username",
+        value=st.session_state.user_passcode,
+        placeholder="e.g. kid1 or family",
+        key="passcode_field"
+    )
+
+    if passcode_input != st.session_state.user_passcode:
+        st.session_state.user_passcode = passcode_input
+        if passcode_input.strip():
+            load_from_cloud(passcode_input)
+            st.rerun()
+
+    st.markdown("---")
+    st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Backup</h3>")
     
     # --- UTILITY 1: EXPORT LIST ---
     if len(st.session_state.tasks) > 0:
@@ -253,7 +276,7 @@ with st.sidebar:
                         base_name, _ = os.path.splitext(uploaded_file.name)
                         st.session_state.list_name = base_name
                         
-                        save_to_laptop()
+                        save_to_cloud()
                         st.rerun()
                     else:
                         st.error(f"❌ Import failed: File exceeds limit of {LIMIT} tasks.")
@@ -268,7 +291,7 @@ with st.sidebar:
                         st.session_state.import_success = True
                         st.session_state.uploader_id += 1
                         reset_transient_panels()
-                        save_to_laptop()
+                        save_to_cloud()
                         st.rerun()
             else:
                 st.error("❌ Invalid format: Unrecognized JSON structure.")
@@ -287,6 +310,9 @@ with st.sidebar:
 if st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Executive Function Assistant</h1>")
     
+    if not st.session_state.user_passcode.strip():
+        st.info("👈 Please enter a Passcode or Username in the sidebar to start auto-syncing your tasks!")
+
     left_col, right_col = st.columns([1.5, 1.2], gap="large")
 
     with left_col:
@@ -325,7 +351,6 @@ if st.session_state.mode == "adding":
             form_title = "Enter a task you would like to add:"
             add_button_label = "Add Task"
 
-        # Unique key based on editing index and form_version forces input field re-instantiation
         ver_key = f"v{st.session_state.form_version}_e{st.session_state.editing_index}"
 
         with st.form(key=f"input_form_{ver_key}", clear_on_submit=False):
@@ -348,7 +373,6 @@ if st.session_state.mode == "adding":
             # --- 3x2 ACTION GRID ---
             row1_col1, row1_col2, row1_col3 = st.columns(3)
             with row1_col1:
-                # First submit button catches Enter key press directly
                 submit_task = st.form_submit_button(add_button_label, key="btn_add", use_container_width=True)
 
             with row1_col2:
@@ -380,12 +404,11 @@ if st.session_state.mode == "adding":
                         if idx < len(st.session_state.tasks):
                             st.session_state.tasks[idx] = new_task_obj
                         
-                        # Hard reset editing tracker & bump form version to force fresh empty form
                         st.session_state.editing_index = None
                         st.session_state.edit_task_name = ""
                         st.session_state.edit_prereq_name = ""
                         st.session_state.form_version += 1
-                        save_to_laptop()
+                        save_to_cloud()
                         st.rerun()
                     else:
                         if len(st.session_state.tasks) < LIMIT:
@@ -393,7 +416,7 @@ if st.session_state.mode == "adding":
                             st.session_state.edit_task_name = ""
                             st.session_state.edit_prereq_name = ""
                             st.session_state.form_version += 1
-                            save_to_laptop()
+                            save_to_cloud()
                             st.rerun()
                         else:
                             st.sidebar.error(f"Limit reached! You cannot add more than {LIMIT} tasks.")
@@ -437,7 +460,7 @@ if st.session_state.mode == "adding":
                     st.session_state.edit_task_name = ""
                     st.session_state.edit_prereq_name = ""
                     st.session_state.form_version += 1
-                    save_to_laptop()
+                    save_to_cloud()
                     st.rerun()
 
         # --- EDIT TASK PANEL ---
@@ -493,7 +516,7 @@ if st.session_state.mode == "adding":
                         if st.session_state.editing_index == from_idx:
                             st.session_state.editing_index = to_idx
                         
-                        save_to_laptop()
+                        save_to_cloud()
                         st.session_state.show_move_dropdowns = False
                         st.rerun()
                         
@@ -526,7 +549,7 @@ if st.session_state.mode == "adding":
                     elif st.session_state.editing_index is not None and st.session_state.editing_index > del_idx:
                         st.session_state.editing_index -= 1
                         
-                    save_to_laptop()
+                    save_to_cloud()
                     st.session_state.show_delete_dropdown = False
                     st.rerun()
         
@@ -564,7 +587,7 @@ elif st.session_state.mode == "working":
         with col1:
             if st.button("👍 Yes, I completed it!", use_container_width=True):
                 del st.session_state.tasks[st.session_state.current_index]
-                save_to_laptop()
+                save_to_cloud()
                 st.session_state.affirmation = random.choice(AFFIRMATIONS)
                 if st.session_state.current_index >= len(st.session_state.tasks):
                     st.session_state.current_index = 0
@@ -604,6 +627,6 @@ elif st.session_state.mode == "working":
             st.session_state.edit_task_name = ""
             st.session_state.edit_prereq_name = ""
             st.session_state.form_version += 1
-            save_to_laptop()
+            save_to_cloud()
             st.rerun()
-              
+            
