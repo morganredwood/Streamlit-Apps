@@ -31,41 +31,6 @@ except Exception as e:
     st.error(f"⚠️ Supabase Error Detail: {e}")
 
 def load_from_cloud(user_key: str, pin: str):
-    """Fetches tasks if user_key and pin match."""
-    clean_key = user_key.strip()
-    clean_pin = pin.strip()
-    
-    if not clean_key or not clean_pin:
-        return
-
-    try:
-        response = supabase.table("tasks_db").select("*").eq("user_key", clean_key).execute()
-        
-        if response.data:
-            row = response.data[0]
-            existing_pin = str(row.get("pin", "")).strip()
-            
-            # Verify PIN match
-            if existing_pin == clean_pin:
-                # 🎯 Force session state to adopt the fetched tasks
-                st.session_state.tasks = row.get("tasks_data", [])
-                st.session_state.list_name = row.get("list_name", "")
-                st.session_state.auth_error = None
-                st.session_state.db_status = f"🟢 Loaded {len(st.session_state.tasks)} tasks from cloud!"
-            else:
-                st.session_state.auth_error = "❌ Incorrect PIN for this passcode!"
-                st.session_state.db_status = None
-        else:
-            # New passcode
-            st.session_state.tasks = []
-            st.session_state.list_name = ""
-            st.session_state.auth_error = None
-            st.session_state.db_status = "🟢 New Passcode Ready!"
-            
-    except Exception as e:
-        st.session_state.auth_error = f"Error loading cloud data: {e}"
-
-def load_from_cloud(user_key: str, pin: str):
     """Fetches tasks if user_key and pin match. Blocks unauthorized access."""
     clean_key = user_key.strip()
     clean_pin = pin.strip()
@@ -120,7 +85,9 @@ def save_to_cloud():
         supabase.table("tasks_db").upsert(payload).execute()
         st.session_state.db_status = "✅ Successfully saved row to Supabase!"
     except Exception as e:
-        st.session_state.db_status = f"❌ Supabase Error: {e}"# ==============================================================================
+        st.session_state.db_status = f"❌ Supabase Error: {e}"
+
+# ==============================================================================
 # 🗂️ GLOBAL STATE INITIALIZATIONS
 # ==============================================================================
 if "tasks" not in st.session_state:
@@ -179,6 +146,11 @@ if "confirm_delete_list" not in st.session_state:
 
 if "affirmation" not in st.session_state:
     st.session_state.affirmation = None
+
+# --- START NEW FEATURE: RANDOMIZE MODE STATE ---
+if "randomize_mode" not in st.session_state:
+    st.session_state.randomize_mode = False
+# --- END NEW FEATURE: RANDOMIZE MODE STATE ---
 
 AFFIRMATIONS = [
     "✨ Fantastic job getting that done!",
@@ -674,25 +646,50 @@ elif st.session_state.mode == "working":
             st.warning(f"⚠️ **Worth Noting:** \n\n  {current_task['prereq']}")
         
         st.write("")
-        st.write("")
+        
+        # --- START NEW FEATURE: RANDOMIZED WORKING MODE ---
+        # Native toggle switch for randomization mode
+        st.session_state.randomize_mode = st.toggle(
+            "🔀 Shuffle / Randomize Next Task", 
+            value=st.session_state.randomize_mode,
+            key="toggle_randomize_mode"
+        )
 
+        st.write("")
         col1, col2, col3 = st.columns(3)
         
         with col1:
             if st.button("👍 Yes, I completed it!", use_container_width=True):
+                # Remove completed task
                 del st.session_state.tasks[st.session_state.current_index]
                 save_to_cloud()
                 st.session_state.affirmation = random.choice(AFFIRMATIONS)
-                if st.session_state.current_index >= len(st.session_state.tasks):
-                    st.session_state.current_index = 0
+                
+                remaining_count = len(st.session_state.tasks)
+                if remaining_count > 0:
+                    if st.session_state.randomize_mode:
+                        # Pick a random index from remaining tasks
+                        st.session_state.current_index = random.randrange(remaining_count)
+                    else:
+                        # Standard linear progression
+                        if st.session_state.current_index >= remaining_count:
+                            st.session_state.current_index = 0
                 st.rerun()
 
         with col2:
             if st.button("👎 No, skip it for now", use_container_width=True):
-                st.session_state.current_index += 1
                 st.session_state.affirmation = None
-                if st.session_state.current_index >= len(st.session_state.tasks):
-                    st.session_state.current_index = 0
+                remaining_count = len(st.session_state.tasks)
+                
+                if remaining_count > 1 and st.session_state.randomize_mode:
+                    # Pick a new random index different from current position
+                    available_indices = [i for i in range(remaining_count) if i != st.session_state.current_index]
+                    st.session_state.current_index = random.choice(available_indices)
+                else:
+                    # Standard linear increment
+                    st.session_state.current_index += 1
+                    if st.session_state.current_index >= remaining_count:
+                        st.session_state.current_index = 0
                 st.rerun()
 
         with col3:
@@ -700,6 +697,7 @@ elif st.session_state.mode == "working":
                 st.session_state.mode = "adding"
                 st.session_state.affirmation = None
                 st.rerun()
+        # --- END NEW FEATURE: RANDOMIZED WORKING MODE ---
 
         if st.session_state.affirmation:
             st.write("")
@@ -723,3 +721,4 @@ elif st.session_state.mode == "working":
             st.session_state.form_version += 1
             save_to_cloud()
             st.rerun()
+            
