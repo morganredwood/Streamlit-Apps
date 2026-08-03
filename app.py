@@ -437,66 +437,70 @@ with st.sidebar:
   )
 
   if uploaded_file is not None:
-    col_replace, col_combine = st.columns(2)
+      col_replace, col_combine = st.columns(2)
 
-    with col_replace:
-      replace_clicked = st.button("Upload: Replace", use_container_width=True)
+      with col_replace:
+        replace_clicked = st.button(
+            "Upload: Replace", use_container_width=True
+        )
 
-    with col_combine:
-      combine_clicked = st.button("Upload: Combine", use_container_width=True)
+      with col_combine:
+        combine_clicked = st.button(
+            "Upload: Combine", use_container_width=True
+        )
 
-    try:
-      imported_data = json.load(uploaded_file)
+      try:
+        imported_data = json.load(uploaded_file)
 
-      if isinstance(imported_data, list):
-        num_imported = len(imported_data)
-        current_count = len(st.session_state.tasks)
+        if isinstance(imported_data, list):
+          num_imported = len(imported_data)
+          current_count = len(st.session_state.tasks)
 
-        if replace_clicked:
-          if num_imported <= LIMIT:
-            st.session_state.tasks = imported_data
-            st.session_state.current_index = 0
-            st.session_state.mode = "adding"
-            st.session_state.import_success = True
-            st.session_state.uploader_id += 1
-            st.session_state.editing_index = None
-            st.session_state.edit_task_name = ""
-            st.session_state.edit_prereq_name = ""
-            st.session_state.form_version += 1
-            reset_transient_panels()
+          if replace_clicked:
+            if num_imported <= LIMIT:
+              base_name, _ = os.path.splitext(uploaded_file.name)
+              st.session_state.list_name = base_name
+              st.session_state.tasks = imported_data
+              st.session_state.current_index = 0
+              st.session_state.mode = "adding"
+              st.session_state.uploader_id += 1
+              st.session_state.editing_index = None
+              st.session_state.edit_task_name = ""
+              st.session_state.edit_prereq_name = ""
+              st.session_state.form_version += 1
+              reset_transient_panels()
 
-            base_name, _ = os.path.splitext(uploaded_file.name)
-            st.session_state.list_name = base_name
+              # Save to cloud FIRST, and only report success if save succeeds!
+              if save_to_cloud():
+                st.session_state.import_success = True
+                st.rerun()
+            else:
+              st.error(
+                  f"❌ Import failed: File exceeds limit of {LIMIT} tasks."
+              )
 
-            if save_to_cloud():
-              st.rerun()
-          else:
-            st.error(
-                f"❌ Import failed: File exceeds limit of {LIMIT} tasks."
-            )
-
-        elif combine_clicked:
-          if current_count == 0:
-            st.sidebar.warning(
-                "⚠️ Your task list is currently empty. Enter a task first to"
-                " combine."
-            )
-          elif (current_count + num_imported) > LIMIT:
-            st.sidebar.error(
-                "❌ Unable to import: combined count exceeds limit of"
-                f" {LIMIT}."
-            )
-          else:
-            st.session_state.tasks.extend(imported_data)
-            st.session_state.import_success = True
-            st.session_state.uploader_id += 1
-            reset_transient_panels()
-            if save_to_cloud():
-              st.rerun()
-      else:
-        st.error("❌ Invalid format: Unrecognized JSON structure.")
-    except Exception:
-      st.error("❌ Failed to read file.")
+          elif combine_clicked:
+            if current_count == 0:
+              st.sidebar.warning(
+                  "⚠️ Your task list is currently empty. Enter a task first to"
+                  " combine."
+              )
+            elif (current_count + num_imported) > LIMIT:
+              st.sidebar.error(
+                  "❌ Unable to import: combined count exceeds limit of"
+                  f" {LIMIT}."
+              )
+            else:
+              st.session_state.tasks.extend(imported_data)
+              st.session_state.uploader_id += 1
+              reset_transient_panels()
+              if save_to_cloud():
+                st.session_state.import_success = True
+                st.rerun()
+        else:
+          st.error("❌ Invalid format: Unrecognized JSON structure.")
+      except Exception as e:
+        st.error(f"❌ Failed to read file: {e}")
 
   if st.session_state.import_success:
     st.success("✅ List restored successfully!")
