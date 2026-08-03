@@ -19,7 +19,7 @@ except Exception:
   SUPABASE_URL = ""
   SUPABASE_KEY = ""
 
-LIMIT = 1000  # Updated capacity limit
+LIMIT = 1000
 
 
 @st.cache_resource
@@ -57,6 +57,25 @@ def get_available_lists(user_key: str):
   return []
 
 
+def fetch_list_tasks_only(user_key: str, target_list: str):
+  """Fetch tasks from a cloud list without switching active session state directly."""
+  if not supabase or not user_key.strip() or not target_list:
+    return []
+  try:
+    response = (
+        supabase.table("tasks_db")
+        .select("tasks_data")
+        .eq("user_key", user_key.strip())
+        .eq("list_name", target_list)
+        .execute()
+    )
+    if response.data:
+      return response.data[0].get("tasks_data", [])
+  except Exception as e:
+    st.sidebar.error(f"Error fetching tasks for '{target_list}': {e}")
+  return []
+
+
 def load_from_cloud(user_key: str, pin: str, target_list: str = None):
   """Fetches tasks if user_key and pin match."""
   clean_key = user_key.strip()
@@ -75,7 +94,6 @@ def load_from_cloud(user_key: str, pin: str, target_list: str = None):
       row = response.data[0]
       existing_pin = str(row.get("pin", "")).strip()
 
-      # Verify PIN match
       if existing_pin == clean_pin:
         st.session_state.tasks = row.get("tasks_data", [])
         st.session_state.list_name = row.get("list_name", "Main List")
@@ -90,7 +108,6 @@ def load_from_cloud(user_key: str, pin: str, target_list: str = None):
         st.session_state.tasks = []
         return False
     else:
-      # If specified list doesn't exist yet, start empty
       if target_list:
         st.session_state.list_name = target_list
       st.session_state.tasks = []
@@ -179,6 +196,9 @@ if "show_edit_dropdown" not in st.session_state:
 if "show_new_list_input" not in st.session_state:
   st.session_state.show_new_list_input = False
 
+if "show_template_actions" not in st.session_state:
+  st.session_state.show_template_actions = False
+
 if "editing_index" not in st.session_state:
   st.session_state.editing_index = None
 
@@ -216,6 +236,7 @@ def reset_transient_panels():
   st.session_state.show_delete_dropdown = False
   st.session_state.confirm_delete_list = False
   st.session_state.show_new_list_input = False
+  st.session_state.show_template_actions = False
 
 
 # ==============================================================================
@@ -292,13 +313,11 @@ with st.sidebar:
       placeholder="e.g. 1234",
   )
 
-  # 1. Manual Sync Button
   if st.button("🔐 Sync / Authenticate", use_container_width=True):
     if passcode_input.strip() and pin_input.strip():
       load_from_cloud(passcode_input, pin_input)
       st.rerun()
 
-  # Feedback indicators
   if st.session_state.auth_error:
     st.error(st.session_state.auth_error)
   elif st.session_state.user_passcode and st.session_state.user_pin:
@@ -306,7 +325,7 @@ with st.sidebar:
     if st.session_state.db_status:
       st.info(st.session_state.db_status)
 
-  # Multi-list selector for authenticated users
+  # --- MULTI-LIST & TEMPLATE ENGINE ---
   if (
       st.session_state.user_passcode.strip()
       and st.session_state.user_pin.strip()
@@ -326,7 +345,6 @@ with st.sidebar:
           else "Main List"
       ]
 
-    # Ensure list_name is in available lists
     if (
         st.session_state.list_name
         and st.session_state.list_name not in avail_lists
@@ -363,8 +381,13 @@ with st.sidebar:
         st.session_state.show_new_list_input = (
             not st.session_state.show_new_list_input
         )
+        st.session_state.show_template_actions = False
     with col_l2:
-      pass
+      if st.button("🧩 Pull Template", use_container_width=True):
+        st.session_state.show_template_actions = (
+            not st.session_state.show_template_actions
+        )
+        st.session_state.show_new_list_input = False
 
     if st.session_state.show_new_list_input:
       new_list_name = st.text_input(
@@ -378,13 +401,60 @@ with st.sidebar:
           save_to_cloud()
           st.rerun()
 
+    # --- TEMPLATE PULL PANEL (Combine / Replace Cloud Lists into Active List) ---
+    if st.session_state.show_template_actions:
+      st.markdown("---")
+      st.html(
+          f"<div style='font-size: 13px; color: {TEXT_COLOR}; font-family:"
+          f" {FONT_FAMILY};'><b>Copy tasks from another cloud list into"
+          f" '{st.session_state.list_name}':</b></div>"
+      )
+
+      source_template = st.selectbox(
+          "Choose Template List:",
+          options=[
+              lst for lst in avail_lists if lst != st.session_state.list_name
+          ]
+          if len(avail_lists) > 1
+          else avail_lists,
+          key="template_source_selector",
+      )
+
+      col_t_combine, col_t_replace = st.columns(2)
+      with col_t_combine:
+        if st.button("📥 Combine", use_container_width=True):
+          fetched_tasks = fetch_list_tasks_only(
+              st.session_state.user_passcode, source_template
+          )
+          if fetched_tasks:
+            st.session_state.tasks.extend(fetched_tasks)
+            save_to_cloud()
+            st.success(f"Combined '{source_template}' into active list!")
+            st.session_state.show_template_actions = False
+            st.rerun()
+          else:
+            st.warning("Selected template list is empty.")
+
+      with col_t_replace:
+        if st.button("🔄 Overwrite", use_container_width=True):
+          fetched_tasks = fetch_list_tasks_only(
+              st.session_state.user_passcode, source_template
+          )
+          if fetched_tasks:
+            st.session_state.tasks = fetched_tasks
+            save_to_cloud()
+            st.success(f"Overwrote active list with '{source_template}'!")
+            st.session_state.show_template_actions = False
+            st.rerun()
+          else:
+            st.warning("Selected template list is empty.")
+
   st.markdown("---")
   st.html(
       f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾"
       " Workspace Backup</h3>"
   )
 
-  # --- UTILITY 1: EXPORT LIST ---
   if len(st.session_state.tasks) > 0:
     current_list_name = st.session_state.get("list_name", None)
     default_name = (
@@ -428,7 +498,6 @@ with st.sidebar:
         key="btn_export_disabled",
     )
 
-  # --- UTILITY 2: DUAL IMPORT INTERFACE ---
   uploaded_file = st.file_uploader(
       label="📥 Select Saved List (.json)",
       type=["json"],
@@ -437,72 +506,67 @@ with st.sidebar:
   )
 
   if uploaded_file is not None:
-      col_replace, col_combine = st.columns(2)
+    col_replace, col_combine = st.columns(2)
 
-      with col_replace:
-        replace_clicked = st.button(
-            "Upload: Replace", use_container_width=True
-        )
+    with col_replace:
+      replace_clicked = st.button("Upload: Replace", use_container_width=True)
 
-      with col_combine:
-        combine_clicked = st.button(
-            "Upload: Combine", use_container_width=True
-        )
+    with col_combine:
+      combine_clicked = st.button("Upload: Combine", use_container_width=True)
 
-      try:
-        imported_data = json.load(uploaded_file)
+    try:
+      imported_data = json.load(uploaded_file)
 
-        if isinstance(imported_data, list):
-          num_imported = len(imported_data)
-          current_count = len(st.session_state.tasks)
+      if isinstance(imported_data, list):
+        num_imported = len(imported_data)
+        current_count = len(st.session_state.tasks)
 
-          if replace_clicked:
-            if num_imported <= LIMIT:
-              base_name, _ = os.path.splitext(uploaded_file.name)
-              st.session_state.list_name = base_name
-              st.session_state.tasks = imported_data
-              st.session_state.current_index = 0
-              st.session_state.mode = "adding"
-              st.session_state.uploader_id += 1
-              st.session_state.editing_index = None
-              st.session_state.edit_task_name = ""
-              st.session_state.edit_prereq_name = ""
-              st.session_state.form_version += 1
-              reset_transient_panels()
+        if replace_clicked:
+          if num_imported <= LIMIT:
+            base_name, _ = os.path.splitext(uploaded_file.name)
+            st.session_state.list_name = base_name
+            st.session_state.tasks = imported_data
+            st.session_state.current_index = 0
+            st.session_state.mode = "adding"
+            st.session_state.uploader_id += 1
+            st.session_state.editing_index = None
+            st.session_state.edit_task_name = ""
+            st.session_state.edit_prereq_name = ""
+            st.session_state.form_version += 1
+            reset_transient_panels()
 
-              if save_to_cloud():
-                st.session_state.import_success = True
-                # Force the selectbox widget to refresh its selection to the new list name
-                if "cloud_list_selector" in st.session_state:
-                  del st.session_state["cloud_list_selector"]
-                st.rerun()
-            else:
-              st.error(
-                  f"❌ Import failed: File exceeds limit of {LIMIT} tasks."
-              )
+            if save_to_cloud():
+              st.session_state.import_success = True
+              if "cloud_list_selector" in st.session_state:
+                del st.session_state["cloud_list_selector"]
+              st.rerun()
+          else:
+            st.error(
+                f"❌ Import failed: File exceeds limit of {LIMIT} tasks."
+            )
 
-          elif combine_clicked:
-            if current_count == 0:
-              st.sidebar.warning(
-                  "⚠️ Your task list is currently empty. Enter a task first to"
-                  " combine."
-              )
-            elif (current_count + num_imported) > LIMIT:
-              st.sidebar.error(
-                  "❌ Unable to import: combined count exceeds limit of"
-                  f" {LIMIT}."
-              )
-            else:
-              st.session_state.tasks.extend(imported_data)
-              st.session_state.uploader_id += 1
-              reset_transient_panels()
-              if save_to_cloud():
-                st.session_state.import_success = True
-                st.rerun()
-        else:
-          st.error("❌ Invalid format: Unrecognized JSON structure.")
-      except Exception as e:
-        st.error(f"❌ Failed to read file: {e}")
+        elif combine_clicked:
+          if current_count == 0:
+            st.sidebar.warning(
+                "⚠️ Your task list is currently empty. Enter a task first to"
+                " combine."
+            )
+          elif (current_count + num_imported) > LIMIT:
+            st.sidebar.error(
+                "❌ Unable to import: combined count exceeds limit of"
+                f" {LIMIT}."
+            )
+          else:
+            st.session_state.tasks.extend(imported_data)
+            st.session_state.uploader_id += 1
+            reset_transient_panels()
+            if save_to_cloud():
+              st.session_state.import_success = True
+              st.rerun()
+      else:
+        st.error("❌ Invalid format: Unrecognized JSON structure.")
+    except Exception as e:
+      st.error(f"❌ Failed to read file: {e}")
 
   if st.session_state.import_success:
     st.success("✅ List restored successfully!")
@@ -608,7 +672,6 @@ if st.session_state.mode == "adding":
           label_visibility="collapsed",
       )
 
-      # --- 3x2 ACTION GRID ---
       row1_col1, row1_col2, row1_col3 = st.columns(3)
       with row1_col1:
         submit_task = st.form_submit_button(
@@ -641,7 +704,6 @@ if st.session_state.mode == "adding":
             black_btn_label, key="btn_delete_list", use_container_width=True
         )
 
-      # --- PROCESS FORM SUBMISSIONS ---
       if submit_task:
         reset_transient_panels()
 
@@ -720,7 +782,6 @@ if st.session_state.mode == "adding":
           save_to_cloud()
           st.rerun()
 
-    # --- EDIT TASK PANEL ---
     if st.session_state.show_edit_dropdown and len(st.session_state.tasks) > 0:
       st.markdown("---")
       st.html(
@@ -757,7 +818,6 @@ if st.session_state.mode == "adding":
           st.session_state.form_version += 1
           st.rerun()
 
-    # --- MOVE TASK PANEL ---
     if (
         st.session_state.show_move_dropdowns
         and len(st.session_state.tasks) > 1
@@ -818,7 +878,6 @@ if st.session_state.mode == "adding":
       )
       st.session_state.show_move_dropdowns = False
 
-    # --- DELETE TASK PANEL ---
     if (
         st.session_state.show_delete_dropdown
         and len(st.session_state.tasks) > 0
@@ -901,7 +960,6 @@ elif st.session_state.mode == "working":
 
     st.write("")
 
-    # Native toggle switch for randomization mode
     st.session_state.randomize_mode = st.toggle(
         "🔀 Shuffle / Randomize Next Task",
         value=st.session_state.randomize_mode,
