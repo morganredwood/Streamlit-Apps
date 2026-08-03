@@ -76,6 +76,34 @@ def fetch_list_tasks_only(user_key: str, target_list: str):
   return []
 
 
+def rename_cloud_list(user_key: str, old_name: str, new_name: str):
+  """Renames an existing list row directly in Supabase."""
+  if not supabase or not user_key.strip() or not old_name or not new_name:
+    return False
+  try:
+    supabase.table("tasks_db").update({"list_name": new_name}).eq(
+        "user_key", user_key.strip()
+    ).eq("list_name", old_name).execute()
+    return True
+  except Exception as e:
+    st.sidebar.error(f"Error renaming list in Supabase: {e}")
+    return False
+
+
+def delete_cloud_list_row(user_key: str, target_list: str):
+  """Completely purges a list row from Supabase so it no longer shows in the cloud dropdown."""
+  if not supabase or not user_key.strip() or not target_list:
+    return False
+  try:
+    supabase.table("tasks_db").delete().eq("user_key", user_key.strip()).eq(
+        "list_name", target_list
+    ).execute()
+    return True
+  except Exception as e:
+    st.sidebar.error(f"Error deleting cloud list: {e}")
+    return False
+
+
 def load_from_cloud(user_key: str, pin: str, target_list: str = None):
   """Fetches tasks if user_key and pin match."""
   clean_key = user_key.strip()
@@ -199,6 +227,9 @@ if "show_new_list_input" not in st.session_state:
 if "show_template_actions" not in st.session_state:
   st.session_state.show_template_actions = False
 
+if "show_manage_list" not in st.session_state:
+  st.session_state.show_manage_list = False
+
 if "editing_index" not in st.session_state:
   st.session_state.editing_index = None
 
@@ -237,6 +268,7 @@ def reset_transient_panels():
   st.session_state.confirm_delete_list = False
   st.session_state.show_new_list_input = False
   st.session_state.show_template_actions = False
+  st.session_state.show_manage_list = False
 
 
 # ==============================================================================
@@ -375,19 +407,28 @@ with st.sidebar:
       st.session_state.current_index = 0
       st.rerun()
 
-    col_l1, col_l2 = st.columns(2)
+    col_l1, col_l2, col_l3 = st.columns(3)
     with col_l1:
-      if st.button("➕ New List", use_container_width=True):
+      if st.button("➕ New", use_container_width=True):
         st.session_state.show_new_list_input = (
             not st.session_state.show_new_list_input
         )
         st.session_state.show_template_actions = False
+        st.session_state.show_manage_list = False
     with col_l2:
-      if st.button("🧩 Pull Template", use_container_width=True):
+      if st.button("🧩 Copy", use_container_width=True):
         st.session_state.show_template_actions = (
             not st.session_state.show_template_actions
         )
         st.session_state.show_new_list_input = False
+        st.session_state.show_manage_list = False
+    with col_l3:
+      if st.button("⚙️ Edit", use_container_width=True):
+        st.session_state.show_manage_list = (
+            not st.session_state.show_manage_list
+        )
+        st.session_state.show_new_list_input = False
+        st.session_state.show_template_actions = False
 
     if st.session_state.show_new_list_input:
       new_list_name = st.text_input(
@@ -399,9 +440,11 @@ with st.sidebar:
           st.session_state.tasks = []
           st.session_state.show_new_list_input = False
           save_to_cloud()
+          if "cloud_list_selector" in st.session_state:
+            del st.session_state["cloud_list_selector"]
           st.rerun()
 
-    # --- TEMPLATE PULL PANEL (Combine / Replace Cloud Lists into Active List) ---
+    # --- TEMPLATE PULL PANEL ---
     if st.session_state.show_template_actions:
       st.markdown("---")
       st.html(
@@ -448,6 +491,47 @@ with st.sidebar:
             st.rerun()
           else:
             st.warning("Selected template list is empty.")
+
+    # --- LIST MANAGEMENT PANEL (Rename & Purge) ---
+    if st.session_state.show_manage_list:
+      st.markdown("---")
+      st.html(
+          f"<div style='font-size: 13px; color: {TEXT_COLOR}; font-family:"
+          f" {FONT_FAMILY};'><b>Manage Active List:"
+          f" '{st.session_state.list_name}'</b></div>"
+      )
+
+      renamed_val = st.text_input(
+          "Rename List To:",
+          value=st.session_state.list_name,
+          key="rename_input_val",
+      )
+      if st.button("✏️ Confirm Rename", use_container_width=True):
+        if renamed_val.strip() and renamed_val.strip() != st.session_state.list_name:
+          old_name = st.session_state.list_name
+          new_name = renamed_val.strip()
+          if rename_cloud_list(
+              st.session_state.user_passcode, old_name, new_name
+          ):
+            st.session_state.list_name = new_name
+            st.session_state.show_manage_list = False
+            if "cloud_list_selector" in st.session_state:
+              del st.session_state["cloud_list_selector"]
+            st.rerun()
+
+      st.markdown("---")
+      if st.button("🗑️ Delete List from Cloud", use_container_width=True):
+        target_to_del = st.session_state.list_name
+        if delete_cloud_list_row(
+            st.session_state.user_passcode, target_to_del
+        ):
+          st.session_state.tasks = []
+          st.session_state.list_name = "Main List"
+          st.session_state.show_manage_list = False
+          if "cloud_list_selector" in st.session_state:
+            del st.session_state["cloud_list_selector"]
+          st.success(f"Deleted '{target_to_del}' from database.")
+          st.rerun()
 
   st.markdown("---")
   st.html(
