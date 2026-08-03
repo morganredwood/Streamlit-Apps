@@ -470,9 +470,11 @@ with st.sidebar:
               st.session_state.form_version += 1
               reset_transient_panels()
 
-              # Save to cloud FIRST, and only report success if save succeeds!
               if save_to_cloud():
                 st.session_state.import_success = True
+                # Force the selectbox widget to refresh its selection to the new list name
+                if "cloud_list_selector" in st.session_state:
+                  del st.session_state["cloud_list_selector"]
                 st.rerun()
             else:
               st.error(
