@@ -10,7 +10,6 @@ st.set_page_config(layout="wide")
 # ==============================================================================
 # 🌐 SUPABASE CLOUD DATABASE CONFIGURATION
 # ==============================================================================
-# Pulls keys safely from Streamlit Cloud Secrets (or local .streamlit/secrets.toml)
 try:
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
     SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
@@ -30,8 +29,24 @@ try:
 except Exception as e:
     st.error(f"⚠️ Supabase Error Detail: {e}")
 
-def load_from_cloud(user_key: str, pin: str):
-    """Fetches tasks if user_key and pin match. Blocks unauthorized access."""
+def get_available_cloud_lists(user_key: str, pin: str):
+    """Fetches all list names registered under this passcode + PIN."""
+    clean_key = user_key.strip()
+    clean_pin = pin.strip()
+    if not clean_key or not clean_pin:
+        return []
+
+    try:
+        response = supabase.table("tasks_db").select("list_name").eq("user_key", clean_key).eq("pin", clean_pin).execute()
+        if response.data:
+            names = [row.get("list_name") for row in response.data if row.get("list_name")]
+            return sorted(list(set(names)))
+    except Exception:
+        pass
+    return []
+
+def load_from_cloud(user_key: str, pin: str, target_list_name: str = None):
+    """Fetches tasks for a specific list under the passcode/PIN credentials."""
     clean_key = user_key.strip()
     clean_pin = pin.strip()
     
@@ -39,41 +54,54 @@ def load_from_cloud(user_key: str, pin: str):
         return
 
     try:
-        response = supabase.table("tasks_db").select("*").eq("user_key", clean_key).execute()
-        if response.data:
-            row = response.data[0]
-            existing_pin = str(row.get("pin", "")).strip()
-            
-            # Verify PIN match
-            if existing_pin == clean_pin:
-                st.session_state.tasks = row.get("tasks_data", [])
-                st.session_state.list_name = row.get("list_name", None)
-                st.session_state.auth_error = None
-                st.session_state.db_status = "🟢 Authenticated & Connected!"
-            else:
+        # Check authentication against any record for this passcode
+        auth_check = supabase.table("tasks_db").select("*").eq("user_key", clean_key).execute()
+        if auth_check.data:
+            valid_rows = [r for r in auth_check.data if str(r.get("pin", "")).strip() == clean_pin]
+            if not valid_rows:
                 st.session_state.auth_error = "❌ Incorrect PIN for this passcode!"
                 st.session_state.db_status = None
                 st.session_state.tasks = []
                 st.session_state.list_name = None
+                return
+        
+        st.session_state.auth_error = None
+        st.session_state.db_status = "🟢 Authenticated & Connected!"
+
+        # Determine target list
+        available_lists = get_available_cloud_lists(clean_key, clean_pin)
+        st.session_state.available_lists = available_lists
+
+        if target_list_name is None:
+            if available_lists:
+                target_list_name = available_lists[0]
+            else:
+                target_list_name = "Main List"
+
+        # Fetch specific list data
+        response = supabase.table("tasks_db").select("*").eq("user_key", clean_key).eq("pin", clean_pin).eq("list_name", target_list_name).execute()
+        if response.data:
+            row = response.data[0]
+            st.session_state.tasks = row.get("tasks_data", [])
+            st.session_state.list_name = row.get("list_name", target_list_name)
         else:
-            # New passcode: initialize clean session
+            # New list initialization
             st.session_state.tasks = []
-            st.session_state.list_name = None
-            st.session_state.auth_error = None
-            st.session_state.db_status = "🟢 New Passcode Ready! (Will create row on first task save)"
+            st.session_state.list_name = target_list_name
+
     except Exception as e:
         st.session_state.auth_error = f"Error loading cloud data: {e}"
 
 def save_to_cloud():
-    """Saves current state to Supabase using persistent session state."""
+    """Saves current state to Supabase using user credentials and active list_name."""
     user_key = st.session_state.get("user_passcode", "").strip()
     pin = st.session_state.get("user_pin", "").strip()
     
     if not user_key or not pin:
-        st.session_state.db_status = f"⚠️ Save Skipped: Passcode ('{user_key}') or PIN ('{pin}') missing from session!"
+        st.session_state.db_status = f"⚠️ Save Skipped: Passcode or PIN missing!"
         return
 
-    current_name = st.session_state.get("list_name") or ""
+    current_name = st.session_state.get("list_name") or "Main List"
 
     try:
         payload = {
@@ -82,8 +110,10 @@ def save_to_cloud():
             "list_name": current_name,
             "tasks_data": st.session_state.tasks
         }
-        supabase.table("tasks_db").upsert(payload).execute()
-        st.session_state.db_status = "✅ Successfully saved row to Supabase!"
+        # Upsert based on composite identity (user_key, list_name)
+        supabase.table("tasks_db").upsert(payload, on_conflict="user_key,list_name").execute()
+        st.session_state.db_status = f"✅ Saved to cloud list: '{current_name}'!"
+        st.session_state.available_lists = get_available_cloud_lists(user_key, pin)
     except Exception as e:
         st.session_state.db_status = f"❌ Supabase Error: {e}"
 
@@ -94,9 +124,11 @@ if "tasks" not in st.session_state:
     st.session_state.tasks = []
 
 if "list_name" not in st.session_state:
-    st.session_state.list_name = None
+    st.session_state.list_name = "Main List"
 
-# Passcode & PIN session trackers
+if "available_lists" not in st.session_state:
+    st.session_state.available_lists = []
+
 if "user_passcode" not in st.session_state:
     st.session_state.user_passcode = ""
 
@@ -105,6 +137,9 @@ if "user_pin" not in st.session_state:
 
 if "auth_error" not in st.session_state:
     st.session_state.auth_error = None
+
+if "db_status" not in st.session_state:
+    st.session_state.db_status = None
 
 if "uploader_id" not in st.session_state:
     st.session_state.uploader_id = 0
@@ -121,7 +156,6 @@ if "mode" not in st.session_state:
 if "form_version" not in st.session_state:
     st.session_state.form_version = 0
 
-# Panel visibility toggles
 if "show_delete_dropdown" not in st.session_state:
     st.session_state.show_delete_dropdown = False
 
@@ -131,7 +165,6 @@ if "show_move_dropdowns" not in st.session_state:
 if "show_edit_dropdown" not in st.session_state:
     st.session_state.show_edit_dropdown = False
 
-# Editing state tracker
 if "editing_index" not in st.session_state:
     st.session_state.editing_index = None
 
@@ -147,10 +180,8 @@ if "confirm_delete_list" not in st.session_state:
 if "affirmation" not in st.session_state:
     st.session_state.affirmation = None
 
-# --- START NEW FEATURE: RANDOMIZE MODE STATE ---
 if "randomize_mode" not in st.session_state:
     st.session_state.randomize_mode = False
-# --- END NEW FEATURE: RANDOMIZE MODE STATE ---
 
 AFFIRMATIONS = [
     "✨ Fantastic job getting that done!",
@@ -220,7 +251,7 @@ st.html(f"""
 """)
 
 # ==============================================================================
-# 💾 SIDEBAR: CLOUD PASSCODE LOGIN & UTILITIES
+# 💾 SIDEBAR: CLOUD PASSCODE LOGIN, MULTI-LIST SELECTOR & UTILITIES
 # ==============================================================================
 with st.sidebar:
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>☁️ Cloud Sync Login</h3>")
@@ -239,44 +270,58 @@ with st.sidebar:
         placeholder="e.g. 1234"
     )
 
-    # 1. Manual Sync Button
     if st.button("🔐 Sync / Authenticate", use_container_width=True):
         if passcode_input.strip() and pin_input.strip():
             load_from_cloud(passcode_input, pin_input)
             st.rerun()
 
-    # 2. AUTO-LOAD: If authenticated but tasks are missing, fetch automatically!
-    if passcode_input.strip() and pin_input.strip() and not st.session_state.get("tasks"):
+    if passcode_input.strip() and pin_input.strip() and not st.session_state.get("tasks") and not st.session_state.auth_error:
         load_from_cloud(passcode_input, pin_input)
 
-    # Display persistent status messages (won't disappear on rerun!)
     if st.session_state.get("auth_error"):
         st.error(st.session_state.auth_error)
     elif st.session_state.get("db_status"):
         st.info(st.session_state.db_status)
-        
-    # Trigger database authentication on input change
-    if passcode_input != st.session_state.user_passcode or pin_input != st.session_state.user_pin:
-        st.session_state.user_passcode = passcode_input
-        st.session_state.user_pin = pin_input
-        st.session_state.uploader_id = passcode_input
 
-        if passcode_input.strip() and pin_input.strip():
-            load_from_cloud(passcode_input, pin_input)
+    # --- MULTI-LIST CLOUD MANAGER ---
+    if passcode_input.strip() and pin_input.strip() and not st.session_state.auth_error:
+        st.markdown("---")
+        st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>🗂️ Cloud Lists</h3>")
+
+        avail_lists = st.session_state.available_lists or ["Main List"]
+        current_active = st.session_state.list_name if st.session_state.list_name in avail_lists else avail_lists[0]
+
+        selected_cloud_list = st.selectbox(
+            "Select Active Cloud List:",
+            options=avail_lists,
+            index=avail_lists.index(current_active) if current_active in avail_lists else 0,
+            key="cloud_list_selector"
+        )
+
+        if selected_cloud_list != st.session_state.list_name:
+            load_from_cloud(passcode_input, pin_input, target_list_name=selected_cloud_list)
             st.rerun()
 
-    # Feedback indicators
-    if st.session_state.auth_error:
-        st.error(st.session_state.auth_error)
-    elif st.session_state.user_passcode and st.session_state.user_pin:
-        st.success(f"🟢 Authenticated: **{st.session_state.user_passcode}**")
+        # Create New Cloud List Expander
+        with st.expander("➕ Create New Cloud List"):
+            new_list_title = st.text_input("New List Name:", key="new_list_title_in", placeholder="e.g. Weekend Chores")
+            if st.button("Create List", use_container_width=True, key="btn_create_new_cloud_list"):
+                clean_title = new_list_title.strip()
+                if clean_title:
+                    st.session_state.tasks = []
+                    st.session_state.list_name = clean_title
+                    st.session_state.current_index = 0
+                    save_to_cloud()
+                    st.rerun()
+                else:
+                    st.warning("Please enter a list name.")
 
     st.markdown("---")
     st.html(f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾 Workspace Backup</h3>")
     
     # --- UTILITY 1: EXPORT LIST ---
     if len(st.session_state.tasks) > 0:
-        current_list_name = st.session_state.get("list_name", None)
+        current_list_name = st.session_state.get("list_name", "Main List")
         default_name = current_list_name if current_list_name else "executive_tasks_backup"
         
         st.html(f"<div style='color: gray; font-size: 14px; font-family: {FONT_FAMILY}; margin-bottom: 2px;'>Export File Name:</div>")
@@ -355,23 +400,25 @@ with st.sidebar:
                 
                 elif combine_clicked:
                     if current_count == 0:
-                        st.sidebar.warning("⚠️ Your task list is currently empty. Enter a task first to combine.")
+                        st.sidebar.warning("⚠️ Your active list is empty. Importing as new list items.")
+                        st.session_state.tasks = imported_data
                     elif (current_count + num_imported) > LIMIT:
                         st.sidebar.error("❌ Unable to import: combined count exceeds limit.")
                     else:
                         st.session_state.tasks.extend(imported_data)
-                        st.session_state.import_success = True
-                        st.session_state.uploader_id += 1
-                        reset_transient_panels()
-                        save_to_cloud()
-                        st.rerun()
+                    
+                    st.session_state.import_success = True
+                    st.session_state.uploader_id += 1
+                    reset_transient_panels()
+                    save_to_cloud()
+                    st.rerun()
             else:
                 st.error("❌ Invalid format: Unrecognized JSON structure.")
         except Exception:
             st.error("❌ Failed to read file.")
 
     if st.session_state.import_success:
-        st.success("✅ List restored successfully!")
+        st.success("✅ List processed and synced to cloud!")
         st.session_state.import_success = False
 
 # ==============================================================================
@@ -383,15 +430,13 @@ if st.session_state.mode == "adding":
     st.html(f"<h1 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>Executive Function Assistant</h1>")
     
     if not (st.session_state.user_passcode.strip() and st.session_state.user_pin.strip()):
-        st.info("👈 Save your progress by creating a Passcode and PIN, or retrieve past work with existing ones! ")
+        st.info("👈 Save your progress by creating a Passcode and PIN, or retrieve past work with existing ones!")
 
     left_col, right_col = st.columns([1.5, 1.2], gap="large")
 
     with left_col:
-        if st.session_state.list_name:
-            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Current Task List: <span style='color: purple; font-weight: normal;'>{st.session_state.list_name}</span></h3>"
-        else:
-            header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Current Task List: <span style='color: gray; font-weight: normal;'><i></i></span></h3>"
+        active_name = st.session_state.get("list_name", "Main List")
+        header_html = f"<h3 style='margin-bottom: 5px; color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Current Task List: <span style='color: purple; font-weight: normal;'>{active_name}</span></h3>"
         st.html(header_html)
         
         with st.container(height=450, border=True):
@@ -520,7 +565,6 @@ if st.session_state.mode == "adding":
                 else:
                     st.session_state.tasks = []
                     st.session_state.current_index = 0
-                    st.session_state.list_name = None
                     reset_transient_panels()
                     st.session_state.editing_index = None
                     st.session_state.edit_task_name = ""
@@ -647,7 +691,6 @@ elif st.session_state.mode == "working":
         
         st.write("")
         
-        # --- START NEW FEATURE: RANDOMIZED WORKING MODE ---
         # Native toggle switch for randomization mode
         st.session_state.randomize_mode = st.toggle(
             "🔀 Shuffle / Randomize Next Task", 
@@ -660,7 +703,6 @@ elif st.session_state.mode == "working":
         
         with col1:
             if st.button("👍 Yes, I completed it!", use_container_width=True):
-                # Remove completed task
                 del st.session_state.tasks[st.session_state.current_index]
                 save_to_cloud()
                 st.session_state.affirmation = random.choice(AFFIRMATIONS)
@@ -668,10 +710,8 @@ elif st.session_state.mode == "working":
                 remaining_count = len(st.session_state.tasks)
                 if remaining_count > 0:
                     if st.session_state.randomize_mode:
-                        # Pick a random index from remaining tasks
                         st.session_state.current_index = random.randrange(remaining_count)
                     else:
-                        # Standard linear progression
                         if st.session_state.current_index >= remaining_count:
                             st.session_state.current_index = 0
                 st.rerun()
@@ -682,11 +722,9 @@ elif st.session_state.mode == "working":
                 remaining_count = len(st.session_state.tasks)
                 
                 if remaining_count > 1 and st.session_state.randomize_mode:
-                    # Pick a new random index different from current position
                     available_indices = [i for i in range(remaining_count) if i != st.session_state.current_index]
                     st.session_state.current_index = random.choice(available_indices)
                 else:
-                    # Standard linear increment
                     st.session_state.current_index += 1
                     if st.session_state.current_index >= remaining_count:
                         st.session_state.current_index = 0
@@ -697,7 +735,6 @@ elif st.session_state.mode == "working":
                 st.session_state.mode = "adding"
                 st.session_state.affirmation = None
                 st.rerun()
-        # --- END NEW FEATURE: RANDOMIZED WORKING MODE ---
 
         if st.session_state.affirmation:
             st.write("")
@@ -713,7 +750,6 @@ elif st.session_state.mode == "working":
             st.session_state.current_index = 0
             st.session_state.mode = "adding"
             st.session_state.affirmation = None
-            st.session_state.list_name = None
             reset_transient_panels()
             st.session_state.editing_index = None
             st.session_state.edit_task_name = ""
