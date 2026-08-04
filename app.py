@@ -274,6 +274,9 @@ def reset_transient_panels():
 # ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION
 # ==============================================================================
+# ==============================================================================
+# 🎨 CENTRAL STYLE CONFIGURATION
+# ==============================================================================
 TEXT_COLOR = "black"
 FONT_FAMILY = "Georgia"
 
@@ -289,17 +292,17 @@ COLOR_DELETE_LIST = "black"
 
 st.html(f"""
     <style>
-    /* Force buttons to fill container smoothly */
+    /* Force buttons to fill container smoothly and remove native Streamlit padding */
     div[class*="st-key-btn_"] button {{
         width: 100% !important;
-        padding-left: 2px !important;
-        padding-right: 2px !important;
+        padding-left: 0px !important;
+        padding-right: 0px !important;
     }}
     
-    /* Prevent awkward word wraps on button text across all screen sizes */
+    /* Strict no-wrap and keep-all for button text */
     div[class*="st-key-btn_"] button p {{
         white-space: nowrap !important;
-        word-break: normal !important;
+        word-break: keep-all !important;
         overflow-wrap: normal !important;
         hyphens: none !important;
         text-align: center !important;
@@ -314,7 +317,7 @@ st.html(f"""
             margin-bottom: 4px !important;
         }}
         div[class*="st-key-btn_"] button p {{
-            font-size: 13px !important; /* Slightly smaller text for 3-button rows on tablets */
+            font-size: 11px !important; /* Scale down just enough to fit the emojis + text in the narrow tablet sidebar */
         }}
     }}
 
@@ -416,21 +419,21 @@ with st.sidebar:
 
     col_l1, col_l2, col_l3 = st.columns(3)
     with col_l1:
-      if st.button("➕ New", use_container_width=True):
+      if st.button("➕ New", use_container_width=True, key="btn_sb_new"):
         st.session_state.show_new_list_input = (
             not st.session_state.show_new_list_input
         )
         st.session_state.show_template_actions = False
         st.session_state.show_manage_list = False
     with col_l2:
-      if st.button("🧩 Copy", use_container_width=True):
+      if st.button("🧩 Copy", use_container_width=True, key="btn_sb_copy"):
         st.session_state.show_template_actions = (
             not st.session_state.show_template_actions
         )
         st.session_state.show_new_list_input = False
         st.session_state.show_manage_list = False
     with col_l3:
-      if st.button("⚙️ Edit", use_container_width=True):
+      if st.button("⚙️ Edit", use_container_width=True, key="btn_sb_edit"):
         st.session_state.show_manage_list = (
             not st.session_state.show_manage_list
         )
