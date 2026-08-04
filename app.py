@@ -289,25 +289,32 @@ COLOR_DELETE_LIST = "black"
 
 st.html(f"""
     <style>
+    /* Force buttons to fill container smoothly */
     div[class*="st-key-btn_"] button {{
         width: 100% !important;
-        padding-left: 4px !important;
-        padding-right: 4px !important;
+        padding-left: 2px !important;
+        padding-right: 2px !important;
     }}
     
+    /* Prevent awkward word wraps on button text across all screen sizes */
     div[class*="st-key-btn_"] button p {{
-        white-space: normal !important;
+        white-space: nowrap !important;
         word-break: normal !important;
         overflow-wrap: normal !important;
         hyphens: none !important;
         text-align: center !important;
+        font-size: 14px !important;
     }}
 
-    @media (max-width: 992px) {{
+    /* Clean tablet layout adjustments */
+    @media (min-width: 576px) and (max-width: 992px) {{
         div[data-testid="column"]:has(div[class*="st-key-btn_"]) {{
-            min-width: 110px !important;
-            flex: 1 1 30% !important;
-            margin-bottom: 8px !important;
+            min-width: 0px !important;
+            flex: 1 1 auto !important;
+            margin-bottom: 4px !important;
+        }}
+        div[class*="st-key-btn_"] button p {{
+            font-size: 13px !important; /* Slightly smaller text for 3-button rows on tablets */
         }}
     }}
 
@@ -321,340 +328,6 @@ st.html(f"""
     div[class*="st-key-btn_confirm_delete"] button p {{ color: {COLOR_DELETE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
     </style>
 """)
-
-# ==============================================================================
-# 💾 SIDEBAR: CLOUD PASSCODE LOGIN & UTILITIES
-# ==============================================================================
-with st.sidebar:
-  st.html(
-      f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>☁️ Cloud"
-      " Sync Login</h3>"
-  )
-
-  passcode_input = st.text_input(
-      label="Enter Passcode:",
-      key="user_passcode",
-      placeholder="e.g. executive-tasks",
-  )
-
-  pin_input = st.text_input(
-      label="Enter 4-Digit PIN:",
-      key="user_pin",
-      type="password",
-      max_chars=4,
-      placeholder="e.g. 1234",
-  )
-
-  if st.button("🔐 Sync / Authenticate", use_container_width=True):
-    if passcode_input.strip() and pin_input.strip():
-      load_from_cloud(passcode_input, pin_input)
-      st.rerun()
-
-  if st.session_state.auth_error:
-    st.error(st.session_state.auth_error)
-  elif st.session_state.user_passcode and st.session_state.user_pin:
-    st.success(f"🟢 Authenticated: **{st.session_state.user_passcode}**")
-    if st.session_state.db_status:
-      st.info(st.session_state.db_status)
-
-  # --- MULTI-LIST & TEMPLATE ENGINE ---
-  if (
-      st.session_state.user_passcode.strip()
-      and st.session_state.user_pin.strip()
-      and not st.session_state.auth_error
-  ):
-    st.markdown("---")
-    st.html(
-        f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>📋 Cloud"
-        " List Selector</h3>"
-    )
-
-    avail_lists = get_available_lists(st.session_state.user_passcode)
-    if not avail_lists:
-      avail_lists = [
-          st.session_state.list_name
-          if st.session_state.list_name
-          else "Main List"
-      ]
-
-    if (
-        st.session_state.list_name
-        and st.session_state.list_name not in avail_lists
-    ):
-      avail_lists.append(st.session_state.list_name)
-      avail_lists = sorted(list(set(avail_lists)))
-
-    current_active = (
-        st.session_state.list_name
-        if st.session_state.list_name in avail_lists
-        else avail_lists[0]
-    )
-
-    selected_cloud_list = st.selectbox(
-        "Select Active Cloud List:",
-        options=avail_lists,
-        index=avail_lists.index(current_active),
-        key="cloud_list_selector",
-    )
-
-    if selected_cloud_list != st.session_state.list_name:
-      st.session_state.list_name = selected_cloud_list
-      load_from_cloud(
-          st.session_state.user_passcode,
-          st.session_state.user_pin,
-          selected_cloud_list,
-      )
-      st.session_state.current_index = 0
-      st.rerun()
-
-    col_l1, col_l2, col_l3 = st.columns(3)
-    with col_l1:
-      if st.button("➕ New", use_container_width=True):
-        st.session_state.show_new_list_input = (
-            not st.session_state.show_new_list_input
-        )
-        st.session_state.show_template_actions = False
-        st.session_state.show_manage_list = False
-    with col_l2:
-      if st.button("🧩 Copy", use_container_width=True):
-        st.session_state.show_template_actions = (
-            not st.session_state.show_template_actions
-        )
-        st.session_state.show_new_list_input = False
-        st.session_state.show_manage_list = False
-    with col_l3:
-      if st.button("⚙️ Edit", use_container_width=True):
-        st.session_state.show_manage_list = (
-            not st.session_state.show_manage_list
-        )
-        st.session_state.show_new_list_input = False
-        st.session_state.show_template_actions = False
-
-    if st.session_state.show_new_list_input:
-      new_list_name = st.text_input(
-          "New List Name:", key="new_list_name_sidebar"
-      )
-      if st.button("Create List", use_container_width=True):
-        if new_list_name.strip():
-          st.session_state.list_name = new_list_name.strip()
-          st.session_state.tasks = []
-          st.session_state.show_new_list_input = False
-          save_to_cloud()
-          if "cloud_list_selector" in st.session_state:
-            del st.session_state["cloud_list_selector"]
-          st.rerun()
-
-    # --- TEMPLATE PULL PANEL ---
-    if st.session_state.show_template_actions:
-      st.markdown("---")
-      st.html(
-          f"<div style='font-size: 13px; color: {TEXT_COLOR}; font-family:"
-          f" {FONT_FAMILY};'><b>Copy tasks from another cloud list into"
-          f" '{st.session_state.list_name}':</b></div>"
-      )
-
-      source_template = st.selectbox(
-          "Choose Template List:",
-          options=[
-              lst for lst in avail_lists if lst != st.session_state.list_name
-          ]
-          if len(avail_lists) > 1
-          else avail_lists,
-          key="template_source_selector",
-      )
-
-      col_t_combine, col_t_replace = st.columns(2)
-      with col_t_combine:
-        if st.button("📥 Combine", use_container_width=True):
-          fetched_tasks = fetch_list_tasks_only(
-              st.session_state.user_passcode, source_template
-          )
-          if fetched_tasks:
-            st.session_state.tasks.extend(fetched_tasks)
-            save_to_cloud()
-            st.success(f"Combined '{source_template}' into active list!")
-            st.session_state.show_template_actions = False
-            st.rerun()
-          else:
-            st.warning("Selected template list is empty.")
-
-      with col_t_replace:
-        if st.button("🔄 Overwrite", use_container_width=True):
-          fetched_tasks = fetch_list_tasks_only(
-              st.session_state.user_passcode, source_template
-          )
-          if fetched_tasks:
-            st.session_state.tasks = fetched_tasks
-            save_to_cloud()
-            st.success(f"Overwrote active list with '{source_template}'!")
-            st.session_state.show_template_actions = False
-            st.rerun()
-          else:
-            st.warning("Selected template list is empty.")
-
-    # --- LIST MANAGEMENT PANEL (Rename & Purge) ---
-    if st.session_state.show_manage_list:
-      st.markdown("---")
-      st.html(
-          f"<div style='font-size: 13px; color: {TEXT_COLOR}; font-family:"
-          f" {FONT_FAMILY};'><b>Manage Active List:"
-          f" '{st.session_state.list_name}'</b></div>"
-      )
-
-      renamed_val = st.text_input(
-          "Rename List To:",
-          value=st.session_state.list_name,
-          key="rename_input_val",
-      )
-      if st.button("✏️ Confirm Rename", use_container_width=True):
-        if renamed_val.strip() and renamed_val.strip() != st.session_state.list_name:
-          old_name = st.session_state.list_name
-          new_name = renamed_val.strip()
-          if rename_cloud_list(
-              st.session_state.user_passcode, old_name, new_name
-          ):
-            st.session_state.list_name = new_name
-            st.session_state.show_manage_list = False
-            if "cloud_list_selector" in st.session_state:
-              del st.session_state["cloud_list_selector"]
-            st.rerun()
-
-      st.markdown("---")
-      if st.button("🗑️ Delete List from Cloud", use_container_width=True):
-        target_to_del = st.session_state.list_name
-        if delete_cloud_list_row(
-            st.session_state.user_passcode, target_to_del
-        ):
-          st.session_state.tasks = []
-          st.session_state.list_name = "Main List"
-          st.session_state.show_manage_list = False
-          if "cloud_list_selector" in st.session_state:
-            del st.session_state["cloud_list_selector"]
-          st.success(f"Deleted '{target_to_del}' from database.")
-          st.rerun()
-
-  st.markdown("---")
-  st.html(
-      f"<h3 style='color: {TEXT_COLOR}; font-family: {FONT_FAMILY};'>💾"
-      " Workspace Backup</h3>"
-  )
-
-  if len(st.session_state.tasks) > 0:
-    current_list_name = st.session_state.get("list_name", None)
-    default_name = (
-        current_list_name if current_list_name else "executive_tasks_backup"
-    )
-
-    st.html(
-        f"<div style='color: gray; font-size: 14px; font-family:"
-        f" {FONT_FAMILY}; margin-bottom: 2px;'>Export File Name:</div>"
-    )
-    custom_name = st.text_input(
-        label="Export File Name",
-        value="",
-        placeholder=default_name,
-        key="export_file_name_input",
-        label_visibility="collapsed",
-    )
-
-    clean_name = custom_name.strip()
-    if clean_name.lower().endswith(".json"):
-      clean_name = clean_name[:-5]
-    if not clean_name:
-      clean_name = default_name
-
-    final_export_filename = f"{clean_name}.json"
-
-    json_string = json.dumps(st.session_state.tasks, indent=2)
-    st.download_button(
-        label="📤 Export List",
-        data=json_string,
-        file_name=final_export_filename,
-        mime="application/json",
-        use_container_width=True,
-        key="btn_export_sidebar",
-    )
-  else:
-    st.button(
-        "📤 Export List (Empty)",
-        disabled=True,
-        use_container_width=True,
-        key="btn_export_disabled",
-    )
-
-  uploaded_file = st.file_uploader(
-      label="📥 Select Saved List (.json)",
-      type=["json"],
-      key=f"file_uploader_{st.session_state.uploader_id}",
-      label_visibility="visible",
-  )
-
-  if uploaded_file is not None:
-    col_replace, col_combine = st.columns(2)
-
-    with col_replace:
-      replace_clicked = st.button("Upload: Replace", use_container_width=True)
-
-    with col_combine:
-      combine_clicked = st.button("Upload: Combine", use_container_width=True)
-
-    try:
-      imported_data = json.load(uploaded_file)
-
-      if isinstance(imported_data, list):
-        num_imported = len(imported_data)
-        current_count = len(st.session_state.tasks)
-
-        if replace_clicked:
-          if num_imported <= LIMIT:
-            base_name, _ = os.path.splitext(uploaded_file.name)
-            st.session_state.list_name = base_name
-            st.session_state.tasks = imported_data
-            st.session_state.current_index = 0
-            st.session_state.mode = "adding"
-            st.session_state.uploader_id += 1
-            st.session_state.editing_index = None
-            st.session_state.edit_task_name = ""
-            st.session_state.edit_prereq_name = ""
-            st.session_state.form_version += 1
-            reset_transient_panels()
-
-            if save_to_cloud():
-              st.session_state.import_success = True
-              if "cloud_list_selector" in st.session_state:
-                del st.session_state["cloud_list_selector"]
-              st.rerun()
-          else:
-            st.error(
-                f"❌ Import failed: File exceeds limit of {LIMIT} tasks."
-            )
-
-        elif combine_clicked:
-          if current_count == 0:
-            st.sidebar.warning(
-                "⚠️ Your task list is currently empty. Enter a task first to"
-                " combine."
-            )
-          elif (current_count + num_imported) > LIMIT:
-            st.sidebar.error(
-                "❌ Unable to import: combined count exceeds limit of"
-                f" {LIMIT}."
-            )
-          else:
-            st.session_state.tasks.extend(imported_data)
-            st.session_state.uploader_id += 1
-            reset_transient_panels()
-            if save_to_cloud():
-              st.session_state.import_success = True
-              st.rerun()
-      else:
-        st.error("❌ Invalid format: Unrecognized JSON structure.")
-    except Exception as e:
-      st.error(f"❌ Failed to read file: {e}")
-
-  if st.session_state.import_success:
-    st.success("✅ List restored successfully!")
-    st.session_state.import_success = False
 
 # ==============================================================================
 # 🧩 MAIN VIEW LOGIC
