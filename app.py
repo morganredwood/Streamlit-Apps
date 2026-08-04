@@ -248,6 +248,9 @@ if "affirmation" not in st.session_state:
 if "randomize_mode" not in st.session_state:
   st.session_state.randomize_mode = False
 
+if "ref_sublist_name" not in st.session_state:
+  st.session_state.ref_sublist_name = None
+
 AFFIRMATIONS = [
     "✨ Fantastic job getting that done!",
     "🎉 Way to cross that off your list!",
@@ -271,9 +274,6 @@ def reset_transient_panels():
   st.session_state.show_manage_list = False
 
 
-# ==============================================================================
-# 🎨 CENTRAL STYLE CONFIGURATION
-# ==============================================================================
 # ==============================================================================
 # 🎨 CENTRAL STYLE CONFIGURATION
 # ==============================================================================
@@ -317,7 +317,7 @@ st.html(f"""
             margin-bottom: 4px !important;
         }}
         div[class*="st-key-btn_"] button p {{
-            font-size: 11px !important; /* Scale down just enough to fit the emojis + text in the narrow tablet sidebar */
+            font-size: 11px !important;
         }}
     }}
 
@@ -1110,6 +1110,49 @@ elif st.session_state.mode == "working":
           " color: orange; font-family: Comic Sans"
           f" MS;'>{st.session_state.affirmation}</div>"
       )
+
+    # --- READ-ONLY SUB-LIST REFERENCE PANEL ---
+    st.markdown("---")
+    with st.expander("📖 View Reference Sub-List (Read-Only)", expanded=False):
+      all_cloud_lists = (
+          get_available_lists(st.session_state.user_passcode)
+          if st.session_state.user_passcode
+          else []
+      )
+
+      # Exclude current active working list to avoid self-reference
+      sublist_options = [
+          lst for lst in all_cloud_lists if lst != st.session_state.list_name
+      ]
+
+      if sublist_options:
+        selected_sublist = st.selectbox(
+            "Choose sub-list to inspect top item:",
+            options=sublist_options,
+            key="sublist_ref_selector",
+        )
+
+        if selected_sublist:
+          ref_tasks = fetch_list_tasks_only(
+              st.session_state.user_passcode, selected_sublist
+          )
+          if ref_tasks:
+            top_ref_task = ref_tasks[0]  # First sequential task
+            st.html(
+                f"<div style='border: 1px solid #ddd; padding: 12px;"
+                " border-radius: 6px; background-color: #f9f9f9;'>"
+                f"<div style='font-size: 14px; color: purple;"
+                f" font-weight: bold;'>📌 First Task in '{selected_sublist}':</div>"
+                f"<div style='font-size: 18px; font-weight: bold; margin-top:"
+                f" 4px;'>{top_ref_task['name']}</div>"
+                "</div>"
+            )
+            if top_ref_task.get("prereq"):
+              st.info(f"⚠️ **Worth Noting:** {top_ref_task['prereq']}")
+          else:
+            st.info(f"The sub-list '{selected_sublist}' is currently empty.")
+      else:
+        st.info("No other cloud lists available for reference view.")
 
   else:
     st.balloons()
