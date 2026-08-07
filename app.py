@@ -239,9 +239,6 @@ if "edit_task_name" not in st.session_state:
 if "edit_prereq_name" not in st.session_state:
   st.session_state.edit_prereq_name = ""
 
-if "confirm_delete_list" not in st.session_state:
-  st.session_state.confirm_delete_list = False
-
 if "affirmation" not in st.session_state:
   st.session_state.affirmation = None
 
@@ -268,7 +265,6 @@ def reset_transient_panels():
   st.session_state.show_edit_dropdown = False
   st.session_state.show_move_dropdowns = False
   st.session_state.show_delete_dropdown = False
-  st.session_state.confirm_delete_list = False
   st.session_state.show_new_list_input = False
   st.session_state.show_template_actions = False
   st.session_state.show_manage_list = False
@@ -288,7 +284,7 @@ COLOR_ADD_TASK = "green"
 COLOR_EDIT_TASK = "darkorange"
 COLOR_MOVE_TASK = "blue"
 COLOR_DELETE_TASK = "red"
-COLOR_DELETE_LIST = "black"
+COLOR_START_WORK = "purple"
 
 st.html(f"""
     <style>
@@ -325,7 +321,7 @@ st.html(f"""
     div[class*="st-key-btn_edit"] button p {{ color: {COLOR_EDIT_TASK} !important; font-family: {FONT_FAMILY} !important; }}
     div[class*="st-key-btn_move"] button p {{ color: {COLOR_MOVE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
     div[class*="st-key-btn_delete_task"] button p {{ color: {COLOR_DELETE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
-    div[class*="st-key-btn_delete_list"] button p {{ color: {COLOR_DELETE_LIST} !important; font-family: {FONT_FAMILY} !important; }}
+    div[class*="st-key-btn_start_work"] button p {{ color: {COLOR_START_WORK} !important; font-family: {FONT_FAMILY} !important; font-weight: bold !important; }}
     div[class*="st-key-btn_confirm_edit"] button p {{ color: {COLOR_EDIT_TASK} !important; font-family: {FONT_FAMILY} !important; }}
     div[class*="st-key-btn_confirm_move"] button p {{ color: {COLOR_MOVE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
     div[class*="st-key-btn_confirm_delete"] button p {{ color: {COLOR_DELETE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
@@ -721,12 +717,6 @@ if st.session_state.mode == "adding":
       else:
         st.html(f"{STYLE_WRAPPER}Your list is currently empty.</div>")
 
-    if st.session_state.confirm_delete_list:
-      st.sidebar.error(
-          "Are you sure you want to delete the WHOLE list? This can't be"
-          " undone."
-      )
-
   with right_col:
     st.html(
         f"<h2 style='text-align: center; margin-bottom: 20px; color:"
@@ -789,14 +779,12 @@ if st.session_state.mode == "adding":
         )
 
       with row2_col2:
-        black_btn_label = (
-            "Yes, All"
-            if st.session_state.confirm_delete_list
-            else "Delete List"
-        )
-        delete_list_click = st.form_submit_button(
-            black_btn_label, key="btn_delete_list", use_container_width=True
-        )
+        if len(st.session_state.tasks) > 0:
+          start_working_click = st.form_submit_button(
+              "Start Working", key="btn_start_work", use_container_width=True
+          )
+        else:
+          start_working_click = False
 
       if submit_task:
         reset_transient_panels()
@@ -840,41 +828,26 @@ if st.session_state.mode == "adding":
         st.session_state.show_edit_dropdown = True
         st.session_state.show_move_dropdowns = False
         st.session_state.show_delete_dropdown = False
-        st.session_state.confirm_delete_list = False
         st.rerun()
 
       elif move_task_click:
         st.session_state.show_move_dropdowns = True
         st.session_state.show_edit_dropdown = False
         st.session_state.show_delete_dropdown = False
-        st.session_state.confirm_delete_list = False
         st.rerun()
 
       elif delete_task_click:
         st.session_state.show_delete_dropdown = True
         st.session_state.show_edit_dropdown = False
         st.session_state.show_move_dropdowns = False
-        st.session_state.confirm_delete_list = False
         st.rerun()
 
-      elif delete_list_click:
-        if not st.session_state.confirm_delete_list:
-          st.session_state.confirm_delete_list = True
-          st.session_state.show_edit_dropdown = False
-          st.session_state.show_move_dropdowns = False
-          st.session_state.show_delete_dropdown = False
-          st.rerun()
-        else:
-          st.session_state.tasks = []
-          st.session_state.current_index = 0
-          st.session_state.list_name = None
-          reset_transient_panels()
-          st.session_state.editing_index = None
-          st.session_state.edit_task_name = ""
-          st.session_state.edit_prereq_name = ""
-          st.session_state.form_version += 1
-          save_to_cloud()
-          st.rerun()
+      elif start_working_click:
+        st.session_state.mode = "working"
+        st.session_state.current_index = 0
+        st.session_state.affirmation = None
+        reset_transient_panels()
+        st.rerun()
 
     if st.session_state.show_edit_dropdown and len(st.session_state.tasks) > 0:
       st.markdown("---")
@@ -1018,19 +991,6 @@ if st.session_state.mode == "adding":
           save_to_cloud()
           st.session_state.show_delete_dropdown = False
           st.rerun()
-
-    if len(st.session_state.tasks) > 0:
-      st.html(
-          "<div style='display: flex; justify-content: center; margin-top:"
-          " 25px;'>"
-      )
-      if st.button("Start Working", key="start_working_big"):
-        st.session_state.mode = "working"
-        st.session_state.current_index = 0
-        st.session_state.affirmation = None
-        reset_transient_panels()
-        st.rerun()
-      st.html("</div>")
 
 # --- MODE: WORKING ON TASKS ---
 elif st.session_state.mode == "working":
