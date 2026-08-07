@@ -325,7 +325,7 @@ st.html(f"""
     div[class*="st-key-btn_edit"] button p {{ color: {COLOR_EDIT_TASK} !important; font-family: {FONT_FAMILY} !important; }}
     div[class*="st-key-btn_move"] button p {{ color: {COLOR_MOVE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
     div[class*="st-key-btn_delete_task"] button p {{ color: {COLOR_DELETE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
-    div[class*="st-key-btn_startworking_list"] button p {{ color: {COLOR_DELETE_LIST} !important; font-family: {FONT_FAMILY} !important; }}
+    div[class*="st-key-btn_delete_list"] button p {{ color: {COLOR_DELETE_LIST} !important; font-family: {FONT_FAMILY} !important; }}
     div[class*="st-key-btn_confirm_edit"] button p {{ color: {COLOR_EDIT_TASK} !important; font-family: {FONT_FAMILY} !important; }}
     div[class*="st-key-btn_confirm_move"] button p {{ color: {COLOR_MOVE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
     div[class*="st-key-btn_confirm_delete"] button p {{ color: {COLOR_DELETE_TASK} !important; font-family: {FONT_FAMILY} !important; }}
@@ -789,11 +789,13 @@ if st.session_state.mode == "adding":
         )
 
       with row2_col2:
-        startworking_list_click = st.form_submit_button(
-          "Start Working on List", key="btn_startworking_list", use_container_width=True
+        black_btn_label = (
+            "Yes, All"
+            if st.session_state.confirm_delete_list
+            else "Delete List"
         )
         delete_list_click = st.form_submit_button(
-            "Start Working on List", key="btn_startworking_list", use_container_width=True
+            black_btn_label, key="btn_delete_list", use_container_width=True
         )
 
       if submit_task:
@@ -1021,7 +1023,7 @@ if st.session_state.mode == "adding":
       st.html(
           "<div style='display: flex; justify-content: center; margin-top:"
           " 25px;'>"
-      ) 
+      )
       if st.button("Start Working", key="start_working_big"):
         st.session_state.mode = "working"
         st.session_state.current_index = 0
